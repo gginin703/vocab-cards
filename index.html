@@ -626,7 +626,9 @@ ringsInit($('#hdRings'));
 fetch('words.json').then(r => { if (!r.ok) throw 0; return r.json(); }).then(data => {
   WORDS = data.words; WORDS.forEach(w => BY[w.id] = w);
   let saved = null; try { saved = JSON.parse(lget(STATE_KEY) || 'null'); } catch {}
-  state = normalize(saved && saved.v === 1 && saved.unitIds?.every(i => BY[i]) ? saved : fresh());
+  const resumed = !!(saved && saved.v === 1 && saved.unitIds?.every(i => BY[i]));
+  state = normalize(resumed ? saved : fresh());
+  if (!resumed) { state.updatedAt = 1; lset(STATE_KEY, JSON.stringify(state)); } // keep this shuffle even if nothing is swiped yet
   renderCards(0); connectDb();
 }).catch(() => { $('#stage').innerHTML = '<div class="done"><h2>字庫載入失敗</h2><p>請重新整理頁面再試一次。</p></div>'; });
 })();
