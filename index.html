@@ -210,6 +210,34 @@ u{text-decoration:none;color:var(--root);font-weight:800}
 
 .toast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom,0px));transform:translate(-50%,16px);opacity:0;z-index:30;background:var(--t1);color:var(--k);padding:10px 16px;border-radius:14px;font-size:15px;font-weight:600;transition:opacity .25s,transform .45s var(--ease-ios);pointer-events:none;max-width:calc(100% - 32px)}
 .toast.on{opacity:1;transform:translate(-50%,0)}
+/* quiz */
+.app{grid-template-columns:minmax(0,1fr)}
+.page>*,.qcard>*{flex-shrink:0}
+.qhead{display:flex;justify-content:space-between;align-items:flex-end;gap:12px}
+.qhead .tag{margin-bottom:2px}
+.qcount{color:var(--t2);font-size:15px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.qcount b{color:var(--t1);font-size:22px;font-weight:800}
+.qcard{display:flex;flex-direction:column;gap:12px}
+.qzh{font-size:24px;font-weight:800;line-height:1.35;color:var(--t1);overflow-wrap:anywhere}
+.qsub{color:var(--t3);font-size:14px;margin:0}
+.qsent{font-size:17px;line-height:1.65;color:var(--t1);margin:0}
+.qsent .blank{display:inline-block;min-width:4.5em;border-bottom:2.5px solid var(--r2);margin:0 2px;height:1.1em;vertical-align:-2px}
+.opts{display:grid;gap:8px}
+.opt{min-height:52px;padding:10px 14px;border-radius:14px;background:var(--s2);text-align:left;font-size:18px;font-weight:700;color:var(--t1);border:2px solid transparent;transition:transform .2s var(--ease-bounce),background .2s,border-color .2s}
+.opt:active{transform:scale(.98)}
+.opt.right{border-color:var(--root)}
+.opt.wrong{border-color:var(--no);background:var(--no-bg)}
+.opt:disabled{cursor:default}
+.qin{display:flex;gap:8px;flex-wrap:wrap}
+.qin input{flex:1 1 180px;width:0;min-width:0;min-height:52px;border-radius:14px;border:2px solid var(--ln);background:var(--s2);color:var(--t1);font:inherit;font-size:20px;font-weight:700;padding:0 14px}
+.qin input:focus{outline:none;border-color:var(--r3)}
+.qplay{align-self:flex-start;display:flex;align-items:center;gap:10px;min-height:56px;padding:0 20px;border-radius:16px;background:var(--s2);font-weight:800;font-size:16px;color:var(--t1)}
+.qplay svg{width:22px;height:22px;fill:var(--t1)}
+.qacts{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.fb{border-radius:16px;padding:12px 14px;font-size:15px;line-height:1.55;color:var(--t1);background:var(--s2);border-left:4px solid var(--root)}
+.fb.bad{background:var(--no-bg);border-left-color:var(--no)}
+.fb b{font-size:18px}
+.fb .muted{margin-top:2px}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
 </style>
 </head>
@@ -305,7 +333,7 @@ function planUnits(){
   return units;
 }
 function fresh(){ const u = planUnits(); return { v:1, unit:0, unitIds:u[0], unitCount:u.length, round:1, deck:shuffle(u[0]), known:[], roundDone:false, r1done:{}, stats:{}, days:[], updatedAt:0 }; }
-function normalize(s){ s.days ||= []; s.stats ||= {}; s.r1done ||= {}; return s; }
+function normalize(s){ s.days ||= []; s.stats ||= {}; s.r1done ||= {}; s.wstat ||= {}; s.mem ||= {}; return s; }
 const today = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; };
 function streak(){
   const set = new Set(state.days); let n = 0; const d = new Date();
@@ -345,7 +373,8 @@ function ringsInit(svg){
 function ringsSet(svg, fr){ svg.querySelectorAll('.fg').forEach((el, i) => { const c = 2 * Math.PI * RADII[i]; el.style.strokeDashoffset = (c * (1 - Math.max(0, Math.min(1, fr[i])))).toFixed(1); }); }
 function ringFractions(){
   const t = state.unitIds.length, k = state.roundDone ? t : state.known.length;
-  return [k / t, 0, seenRight() / WORDS.length];
+  const [qf, qt] = quizCount();
+  return [k / t, qt ? qf / qt : 0, seenRight() / WORDS.length];
 }
 
 /* ---------- spring (interruptible) ---------- */
@@ -550,11 +579,11 @@ function openStats(){
   const html = `
     <div class="sec quote"><span class="lbl">今日佳句</span><p>每天早上 6 點更新的程式上線後，這裡會出現一句名人佳句和中文翻譯。</p></div>
     <div class="sec big-rings"><svg class="rings" id="bigRings" width="104" height="104"></svg>
-      <div class="legend"><div><i style="background:var(--r1)"></i>本輪熟悉<b>${k}/${t}</b></div><div><i style="background:var(--r2)"></i>單元測驗<b>${state.r1done[state.unit] ? '0/' + Math.min(80, t + 30 * state.unit) : '未開放'}</b></div><div><i style="background:var(--r3)"></i>滑過熟悉的字<b>${seen}/${WORDS.length}</b></div></div></div>
+      <div class="legend"><div><i style="background:var(--r1)"></i>本輪熟悉<b>${k}/${t}</b></div><div><i style="background:var(--r2)"></i>單元測驗<b>${state.r1done[state.unit] ? quizCount().join('/') : '未開放'}</b></div><div><i style="background:var(--r3)"></i>滑過熟悉的字<b>${seen}/${WORDS.length}</b></div></div></div>
     <div class="sec tiles">
       <div class="tile"><b>${streak()} 天</b><span>連續學習</span></div>
       <div class="tile"><b>${weak}</b><span>本單元待加強（書上畫線）</span></div>
-      <div class="tile"><b>0</b><span>長期記憶（測驗上線後計算）</span></div>
+      <div class="tile"><b>${Object.keys(state.mem).filter(isLong).length}</b><span>長期記憶（5 次熟悉、相隔 60 天以上）</span></div>
       <div class="tile"><b>${state.unit + 1} / ${state.unitCount}</b><span>單元（目前整理了 ${WORDS.length} 字）</span></div></div>
     <div class="sec"><span class="lbl">最常滑「不熟」的字</span>${worst.length ? worst.map(([i, s]) => li(BY[i].w, BY[i].zh.split(/[；;]/)[0], `不熟 ${s.L} 次 · 熟悉 ${s.R} 次`)).join('') : '<p class="muted">還沒有。左滑過的字會列在這裡。</p>'}</div>
     <div class="sec"><span class="lbl">設定</span>
@@ -594,6 +623,136 @@ function restore(f){
 }
 $('#openStats').onclick = openStats;
 
+/* ---------- quiz ---------- */
+const QT = { choose:'看中文選英文', context:'情境配對', spell:'看中文拼英文', listen:'聽發音拼字', cloze:'例句填空' };
+const DAY = 864e5;
+const isLong = id => { const m = state.mem[id]; return !!m && m.length >= 5 && m[m.length - 1] - m[0] >= 60 * DAY; };
+const isFam = e => e.need.every(t => e.done.includes(t));
+const norm = x => String(x || '').trim().toLowerCase().replace(/[‘’]/g, "'").replace(/\s+/g, ' ');
+const zh1 = w => w.zh.replace(/^[a-z.\s/]+/i, '').split(/[；;]/)[0].split(/\s*\d+\.\s*/).filter(Boolean)[0] || w.zh;
+function clozeOf(w){
+  if (!w.ex?.[0]) return null;
+  const stem = (w.w.length > 4 ? w.w.slice(0, -1) : w.w).replace(/[^a-z]/gi, ''); if (!stem) return null;
+  const m = w.ex[0].match(new RegExp('\\b(' + stem + '\\w*)', 'i'));
+  return m ? { form: m[1], at: m.index } : null;
+}
+function typesFor(id, old){
+  const w = BY[id], t = ['spell', 'listen']; if (clozeOf(w)) t.push('cloze');
+  if (old) return shuffle(t).slice(0, 2);
+  return ['choose', ...(w.ctx ? ['context'] : []), ...t];
+}
+function quizPool(){
+  const prev = planUnits().slice(0, state.unit).flat(), ws = state.wstat, now = Date.now();
+  const score = id => { const x = ws[id] || {}; return (isLong(id) ? 1e9 : 0) + (x.fam || 0) * 1e6 - (x.wrong && now - x.wrong < 7 * DAY ? 5e5 : 0) + (x.last || 0) / 1e7; };
+  return { neu: state.unitIds.slice(), old: prev.filter(id => BY[id]).sort((a, b) => score(a) - score(b)).slice(0, 30) };
+}
+function ensureQuiz(){
+  if (state.quiz && state.quiz.unit === state.unit) return state.quiz;
+  const { neu, old } = quizPool(), words = {};
+  neu.forEach(id => words[id] = { need: typesFor(id, false), done: [] });
+  old.forEach(id => { if (!words[id]) words[id] = { need: typesFor(id, true), done: [], old: 1 }; });
+  state.quiz = { unit: state.unit, words, recent: [], n: 0, cur: null }; save();
+  return state.quiz;
+}
+function quizCount(){
+  const q = state.quiz; if (!q || q.unit !== state.unit) return [0, state.unitIds.length + Math.min(30, state.unit * UNIT_SIZE)];
+  const es = Object.values(q.words); return [es.filter(isFam).length, es.length];
+}
+function chooseOpts(id){
+  const w = BY[id], p = w.pos.split(/\s*\/\s*/)[0];
+  const others = shuffle(WORDS.filter(x => x.id !== id && zh1(x) !== zh1(w)));
+  const same = others.filter(x => x.pos.startsWith(p)), pick = [];
+  for (const x of [...same, ...others]) { if (pick.length >= 3) break; if (!pick.includes(x.id)) pick.push(x.id); }
+  return shuffle([id, ...pick]);
+}
+function pickQ(){
+  const q = state.quiz, ids = Object.keys(q.words).filter(id => !isFam(q.words[id]));
+  if (!ids.length) return null;
+  let pool = ids.filter(id => !q.recent.includes(id)); if (!pool.length) pool = ids;
+  const id = pool[Math.floor(Math.random() * pool.length)], e = q.words[id];
+  const left = e.need.filter(t => !e.done.includes(t)), type = left[Math.floor(Math.random() * left.length)];
+  return { id, type, opts: type === 'choose' ? chooseOpts(id) : null };
+}
+function answerQ(ok){
+  const q = state.quiz, c = q.cur; if (!c) return;
+  const e = q.words[c.id], x = state.wstat[c.id] ||= {}, now = Date.now();
+  x.last = now; q.n++;
+  if (ok) {
+    if (!e.done.includes(c.type)) e.done.push(c.type);
+    if (isFam(e)) { (state.mem[c.id] ||= []).push(now); x.fam = (x.fam || 0) + 1; }
+  } else {
+    x.wrong = now; x.miss = (x.miss || 0) + 1;
+    if (e.done.length) e.done.splice(Math.floor(Math.random() * e.done.length), 1);
+  }
+  q.recent.push(c.id); q.recent = q.recent.slice(-Math.min(4, Math.max(0, Object.keys(q.words).length - 1)));
+  if (!state.days.includes(today())) state.days.push(today());
+  q.cur = null; save(); renderHeader();
+}
+function nextUnit(){
+  const u = planUnits(); if (state.unit + 1 >= u.length) return;
+  state.unit++; state.unitIds = u[state.unit]; state.unitCount = u.length; state.round = 1; state.deck = shuffle(state.unitIds);
+  state.known = []; state.roundDone = false; state.quiz = null; lastSnap = null; flipped = false; save();
+  setView('cards'); renderCards(0); toast(`Unit ${state.unit + 1} 開始，先滑完第 1 輪字卡`);
+}
+function renderQuiz(){
+  const root = $('#quizRoot'); if (!root) return;
+  const q = ensureQuiz(), [f, t] = quizCount();
+  const head = `<div class="qhead"><div><span class="tag">Unit ${state.unit + 1}</span><h2>測驗</h2></div><div class="qcount"><b>${f}</b> / ${t} 熟悉</div></div>
+    <div class="meter" aria-hidden="true"><i style="transform:scaleX(${t ? f / t : 0});background:var(--r2)"></i></div>`;
+  if (f === t) {
+    const last = state.unit + 1 >= state.unitCount;
+    root.innerHTML = head + `<div class="panel"><h3>Unit ${state.unit + 1} 全部熟悉</h3><p>${t} 個字都通過了，一共答了 ${q.n} 題。</p>${last
+      ? '<p class="muted">這是目前整理好的最後一個單元。單字書下一批頁數整理好後，就能繼續。</p>'
+      : `<button class="btn" id="goNext">進入 Unit ${state.unit + 2}</button>`}</div>`;
+    const b = $('#goNext'); if (b) b.onclick = nextUnit; return;
+  }
+  if (!q.cur || !q.words[q.cur.id]) { q.cur = pickQ(); save(); }
+  const c = q.cur, w = BY[c.id], e = q.words[c.id];
+  const meta = `<span class="lbl">${QT[c.type]}${e.old ? ' · 複習舊字' : ''} · 這個字 ${e.done.length}/${e.need.length}</span>`;
+  const field = (ph) => `<form class="qin" id="qform" autocomplete="off"><input id="qans" type="text" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="done" placeholder="${ph}" aria-label="輸入英文"><button class="btn" type="submit">確認</button></form>`;
+  const skip = `<div class="qacts"><button class="chip" id="qskip" type="button">不會，看答案</button></div>`;
+  let body = '';
+  if (c.type === 'choose') {
+    body = `<div class="qzh">${esc(zh1(w))}</div><p class="qsub">${esc(w.pos)}　選出對應的英文單字</p>
+      <div class="opts">${c.opts.map(o => `<button class="opt" type="button" data-o="${o}" lang="en">${esc(BY[o].w)}</button>`).join('')}</div>`;
+  } else if (c.type === 'spell') {
+    body = `<div class="qzh">${esc(zh1(w))}</div><p class="qsub">${esc(w.pos)}　${w.w.length} 個字母，要完全拼對</p>${field('拼出英文')}${skip}`;
+  } else if (c.type === 'listen') {
+    body = `<button class="qplay" id="qplay" type="button" aria-label="播放發音">${SPK}再聽一次</button><p class="qsub">聽發音，拼出這個字（${w.w.length} 個字母）</p>${field('聽到的字')}${skip}`;
+  } else if (c.type === 'cloze') {
+    const z = clozeOf(w), s0 = w.ex[0];
+    const sent = esc(s0.slice(0, z.at)) + '<span class="blank" aria-label="空格"></span>' + esc(s0.slice(z.at + z.form.length));
+    const diff = norm(z.form) !== norm(w.w);
+    body = `<p class="qsent" lang="en">${sent}</p><p class="qsub">${esc(w.ex[1])}</p><p class="qsub">提示：${esc(zh1(w))}${diff ? '，要照句子改成正確的詞形' : ''}</p>${field('填入空格的字')}${skip}`;
+  }
+  root.innerHTML = head + `<div class="panel qcard">${meta}${body}<div id="qfb" hidden></div></div>`;
+
+  const finish = (ok, given) => {
+    answerQ(ok);
+    const z = c.type === 'cloze' ? clozeOf(w) : null, ans = z ? z.form : w.w;
+    root.querySelectorAll('input,.opt,#qform button,#qskip').forEach(el => el.disabled = true);
+    const fb = $('#qfb'); fb.hidden = false; fb.className = 'fb' + (ok ? '' : ' bad');
+    fb.innerHTML = `${ok ? '答對了' : (given ? `你填的是「${esc(given)}」，正確是` : '答案是')}　<b lang="en">${esc(ans)}</b><div class="muted">${esc(w.pos)}　${esc(zh1(w))}${!ok && e.done.length ? '　·　這個字退一級，幾題後會再出現' : ''}</div>
+      <div class="qacts" style="margin-top:10px"><button class="btn" id="qnext" type="button">下一題</button><button class="chip" type="button" data-say="${esc(w.w)}">聽發音</button></div>`;
+    fb.querySelector('[data-say]').onclick = ev => speak(w.w, ev.currentTarget);
+    speak(w.w); const nx = $('#qnext'); nx.onclick = () => renderQuiz(); nx.focus();
+    const [nf, nt] = quizCount(); root.querySelector('.qcount').innerHTML = `<b>${nf}</b> / ${nt} 熟悉`;
+    root.querySelector('.meter i').style.transform = `scaleX(${nt ? nf / nt : 0})`;
+  };
+  if (c.type === 'choose') root.querySelectorAll('.opt').forEach(b => b.onclick = () => {
+    const ok = b.dataset.o === c.id; b.classList.add(ok ? 'right' : 'wrong');
+    if (!ok) root.querySelector(`.opt[data-o="${c.id}"]`).classList.add('right'); finish(ok); });
+  const form = $('#qform');
+  if (form) {
+    const inp = $('#qans');
+    form.onsubmit = ev => { ev.preventDefault(); const v = inp.value; if (!norm(v)) { inp.focus(); return; }
+      const want = c.type === 'cloze' ? clozeOf(w).form : w.w; finish(norm(v) === norm(want), v.trim()); };
+    $('#qskip').onclick = () => finish(false, '');
+    if (c.type !== 'listen') setTimeout(() => inp.focus({ preventScroll: true }), 60);
+  }
+  if (c.type === 'listen') { const p = $('#qplay'); p.onclick = () => { speak(w.w, p); $('#qans').focus(); }; speak(w.w, p); }
+}
+
 /* ---------- views ---------- */
 const VIEWS = ['cards', 'article', 'podcast', 'quiz'];
 function setView(v){
@@ -605,10 +764,11 @@ function setView(v){
     article: `<h2>每日文章</h2><div class="panel"><span class="tag">每天早上 6 點換新</span><h3>托福、雅思長度的真實文章</h3><p>來源輪流用 VOA、The Conversation、ProPublica 和 TED 逐字稿，另附 1–2 則 BBC、CNN 連結當延伸閱讀。</p><p>每篇 6–8 題，托福和雅思題型混合。長按任何字看意思，做完題目才打開片語和難字整理。</p></div><p class="muted">每日更新程式在另一台電腦裝好後，這裡就會有當天的文章。</p>`,
     podcast: `<h2>聽力</h2><div class="panel"><span class="tag">每天早上 6 點換新</span><h3>VOA Learning English／TED Talks Daily</h3><p>每天一集 5–15 分鐘。字幕逐句跟著聲音亮起，點任何一句可以跳過去或單句重播，可以調成 0.75、0.9 倍速。</p><p>每集開始選輔助模式（有字幕）或挑戰模式（先盲聽再做題），兩種成績分開統計。</p></div><p class="muted">每日更新程式在另一台電腦裝好後，這裡就會有當天的節目。</p>`,
     quiz: ok
-      ? `<h2>測驗</h2><div class="panel"><span class="tag">Unit ${state.unit + 1} 已開放</span><h3>本單元 ${t} 字＋30 個舊字</h3><p>五種題型：看中文選英文、情境配對、看中文拼英文、聽發音拼字、例句填空。每個字五種各答對一次才算熟悉，全部熟悉就進下一單元。</p><p class="muted">測驗畫面是下一個要做的部分。</p></div>`
+      ? `<div id="quizRoot"></div>`
       : `<h2>測驗</h2><div class="panel"><h3>第 1 輪滑完才能開始</h3><p>把 Unit ${state.unit + 1} 的 ${t} 個字都滑到熟悉，就會開放測驗。</p><div class="meter" aria-hidden="true"><i id="qm" style="transform:scaleX(0)"></i></div><p class="muted">已熟悉 ${k} / ${t}</p></div>`
   };
   o.innerHTML = `<div class="page">${pages[v]}</div>`;
+  if (v === 'quiz' && ok) renderQuiz();
   o.style.animation = 'none'; void o.offsetWidth; o.style.animation = '';
   const qm = $('#qm'); if (qm) requestAnimationFrame(() => requestAnimationFrame(() => qm.style.transform = `scaleX(${k / t})`));
 }
@@ -629,6 +789,7 @@ fetch('words.json').then(r => { if (!r.ok) throw 0; return r.json(); }).then(dat
   const resumed = !!(saved && saved.v === 1 && saved.unitIds?.every(i => BY[i]));
   state = normalize(resumed ? saved : fresh());
   if (!resumed) { state.updatedAt = 1; lset(STATE_KEY, JSON.stringify(state)); } // keep this shuffle even if nothing is swiped yet
+  state.unitCount = Math.ceil(WORDS.length / UNIT_SIZE); // the book grows as more pages are added
   renderCards(0); connectDb();
 }).catch(() => { $('#stage').innerHTML = '<div class="done"><h2>字庫載入失敗</h2><p>請重新整理頁面再試一次。</p></div>'; });
 })();
