@@ -198,8 +198,14 @@ u{text-decoration:none;color:var(--root);font-weight:800}
 .tile{background:var(--s2);border-radius:16px;padding:11px 13px}
 .tile b{display:block;font-size:24px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1.2}
 .tile span{font-size:12px;color:var(--t3)}
-.quote{border-radius:18px;padding:14px;background:var(--s2)}
-.quote p{margin:4px 0 0;color:var(--t2);font-size:14px}
+.sh-body>*{flex-shrink:0}
+.qcard2{position:relative;border-radius:24px;padding:16px 18px 16px;background:linear-gradient(150deg,color-mix(in srgb,var(--r1) 14%,var(--s1)),var(--s1) 70%);border:1px solid var(--ln);overflow:hidden}
+.qt{display:block;text-align:left;width:100%;position:relative;margin-top:2px}
+.qt-mark{position:absolute;left:-2px;top:-14px;font-family:Georgia,serif;font-size:72px;line-height:1;color:var(--r1);opacity:.35}
+.qt-en{display:block;position:relative;padding-top:18px;font-family:ui-serif,Georgia,"Times New Roman",serif;font-size:21px;line-height:1.45;font-weight:700;color:var(--t1);overflow-wrap:anywhere}
+.qt-zh{margin:10px 0 0;color:var(--t2);font-size:15px;line-height:1.5}
+.qt-by{margin-top:10px;font-size:13px;font-weight:800;color:var(--t1);display:flex;flex-wrap:wrap;gap:2px 10px;align-items:baseline}
+.qt-by span{font-weight:600;color:var(--t3)}
 .setting{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:52px}
 .setting>span{font-weight:700;font-size:15px}
 .seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;background:var(--s2);border-radius:10px;padding:2px;position:relative}
@@ -323,7 +329,7 @@ u{text-decoration:none;color:var(--root);font-weight:800}
 .art-p{margin:0 0 1.15em;font-family:var(--serif);font-size:var(--fs);line-height:1.85;color:var(--t1);overflow-wrap:anywhere;word-break:normal}
 .art-p.lead{font-size:calc(var(--fs) + 2px);line-height:1.75}
 .art-p.lead::first-letter{float:left;font-size:3.5em;line-height:.82;padding:.07em .1em 0 0;font-weight:800;color:var(--r3)}
-.art-p.quote{border-left:4px solid var(--r3);padding:2px 0 2px 16px;font-style:italic;color:var(--t2)}
+.art-p.pull{border-left:4px solid var(--r3);padding:2px 0 2px 16px;font-style:italic;color:var(--t2)}
 .art-sub{margin:1.7em 0 .6em;font-family:var(--serif);font-size:calc(var(--fs) + 3px);line-height:1.3;font-weight:800;display:flex;align-items:center;gap:10px}
 .art-sub::before{content:"";flex:0 0 5px;align-self:stretch;border-radius:3px;background:var(--r3)}
 .aw{border-radius:4px;transition:background .15s}
@@ -402,7 +408,9 @@ u{text-decoration:none;color:var(--root);font-weight:800}
 
 <script>
 (() => {
-const BUILD = 'a11e4e9e13';
+const QUOTES = [{"q": "Stay hungry. Stay foolish.", "a": "Steve Jobs", "zh": "求知若飢，虛心若愚。", "s": "2005 史丹佛畢業演講"}, {"q": "Imagination is more important than knowledge.", "a": "Albert Einstein", "zh": "想像力比知識更重要。", "s": "1929 訪談"}, {"q": "Injustice anywhere is a threat to justice everywhere.", "a": "Martin Luther King Jr.", "zh": "任何地方的不公義，都是對所有地方正義的威脅。", "s": "伯明罕獄中書簡"}, {"q": "The only thing we have to fear is fear itself.", "a": "Franklin D. Roosevelt", "zh": "我們唯一需要害怕的，就是害怕本身。", "s": "1933 就職演說"}, {"q": "We are what we repeatedly do. Excellence, then, is not an act, but a habit.", "a": "Will Durant", "zh": "我們就是我們反覆做的事。卓越不是一次行動，而是一種習慣。", "s": "概述亞里斯多德的思想"}, {"q": "A journey of a thousand miles begins with a single step.", "a": "老子", "zh": "千里之行，始於足下。", "s": "《道德經》第六十四章"}, {"q": "Nothing great was ever achieved without enthusiasm.", "a": "Ralph Waldo Emerson", "zh": "沒有熱情，就不會有偉大的成就。", "s": "《Circles》"}, {"q": "If you don't like something, change it. If you can't change it, change your attitude.", "a": "Maya Angelou", "zh": "如果不喜歡某件事，就改變它；如果改變不了，就改變你的態度。", "s": ""}, {"q": "Genius is one percent inspiration and ninety-nine percent perspiration.", "a": "Thomas Edison", "zh": "天才是百分之一的靈感，加上百分之九十九的汗水。", "s": ""}, {"q": "If I have seen further, it is by standing on the shoulders of giants.", "a": "Isaac Newton", "zh": "如果我看得比別人遠，那是因為我站在巨人的肩膀上。", "s": "1675 致 Hooke 的信"}, {"q": "The unexamined life is not worth living.", "a": "Socrates", "zh": "未經審視的人生不值得過。", "s": "柏拉圖《申辯篇》"}, {"q": "It is not that we have a short time to live, but that we waste much of it.", "a": "Seneca", "zh": "不是我們擁有的時間太短，而是我們浪費了太多。", "s": "《論生命之短暫》"}, {"q": "What stands in the way becomes the way.", "a": "Marcus Aurelius", "zh": "阻礙前進的東西，會變成前進的路。", "s": "《沉思錄》"}, {"q": "You have brains in your head. You have feet in your shoes. You can steer yourself any direction you choose.", "a": "Dr. Seuss", "zh": "你的頭腦裡有智慧，鞋子裡有雙腳，你可以朝任何想去的方向前進。", "s": "《Oh, the Places You'll Go!》"}, {"q": "Two roads diverged in a wood, and I took the one less traveled by, and that has made all the difference.", "a": "Robert Frost", "zh": "樹林裡分出兩條路，我選了人跡較少的那條，一切就因此不同。", "s": "《The Road Not Taken》"}, {"q": "Our doubts are traitors, and make us lose the good we oft might win, by fearing to attempt.", "a": "William Shakespeare", "zh": "我們的疑慮是叛徒，讓我們因為不敢嘗試，錯失本來能得到的好事。", "s": "《Measure for Measure》"}, {"q": "To improve is to change; to be perfect is to change often.", "a": "Winston Churchill", "zh": "進步就是改變；要完美，就要常常改變。", "s": "1925 演說"}, {"q": "I've failed over and over and over again in my life. And that is why I succeed.", "a": "Michael Jordan", "zh": "我一生中失敗了一次又一次，這正是我成功的原因。", "s": "1997 Nike 廣告"}, {"q": "It is impossible to live without failing at something, unless you live so cautiously that you might as well not have lived at all.", "a": "J. K. Rowling", "zh": "人不可能不在任何事上失敗，除非你過得太小心，小心到等於沒活過。", "s": "2008 哈佛畢業演講"}, {"q": "Change will not come if we wait for some other person or some other time.", "a": "Barack Obama", "zh": "如果我們等著別人、等著別的時候，改變就不會來。", "s": "2008 演說"}, {"q": "One child, one teacher, one book, one pen can change the world.", "a": "Malala Yousafzai", "zh": "一個孩子、一位老師、一本書、一支筆，就能改變世界。", "s": "2013 聯合國演說"}, {"q": "Education is the most powerful weapon which you can use to change the world.", "a": "Nelson Mandela", "zh": "教育是你能用來改變世界最有力的武器。", "s": "2003 演說"}, {"q": "However difficult life may seem, there is always something you can do and succeed at.", "a": "Stephen Hawking", "zh": "不管生活看起來多困難，總有你能做、而且能成功的事。", "s": ""}, {"q": "Imagination will often carry us to worlds that never were. But without it, we go nowhere.", "a": "Carl Sagan", "zh": "想像力常常帶我們去從未存在的世界，但沒有它，我們哪裡也去不了。", "s": "《Cosmos》"}, {"q": "How wonderful it is that nobody need wait a single moment before starting to improve the world.", "a": "Anne Frank", "zh": "多麼美好，沒有人需要等一刻，就能開始讓世界變得更好。", "s": "1944 日記"}, {"q": "If one advances confidently in the direction of his dreams, and endeavors to live the life which he has imagined, he will meet with a success unexpected in common hours.", "a": "Henry David Thoreau", "zh": "如果一個人懷著信心朝夢想前進，努力過自己想像中的生活，就會得到平常時刻意想不到的成功。", "s": "《Walden》"}, {"q": "Education is what remains after one has forgotten what one has learned in school.", "a": "Albert Einstein", "zh": "教育，是把在學校學到的東西都忘光之後，還留下來的東西。", "s": "1936 文章"}, {"q": "The important thing is not to stop questioning. Curiosity has its own reason for existing.", "a": "Albert Einstein", "zh": "重要的是不要停止提問。好奇心本身就有存在的理由。", "s": "1955《LIFE》雜誌"}, {"q": "Ever tried. Ever failed. No matter. Try again. Fail again. Fail better.", "a": "Samuel Beckett", "zh": "試過，失敗過，沒關係。再試，再失敗，失敗得更好。", "s": "《Worstward Ho》"}, {"q": "Chance favors only the prepared mind.", "a": "Louis Pasteur", "zh": "機運只會眷顧有準備的頭腦。", "s": "1854 演講"}, {"q": "You miss 100% of the shots you don't take.", "a": "Wayne Gretzky", "zh": "你不出手的球，百分之百都投不進。", "s": ""}, {"q": "If there is no struggle, there is no progress.", "a": "Frederick Douglass", "zh": "沒有奮鬥，就沒有進步。", "s": "1857 演說"}, {"q": "Success is to be measured not so much by the position that one has reached in life as by the obstacles which he has overcome.", "a": "Booker T. Washington", "zh": "衡量成功，與其看一個人達到什麼地位，不如看他克服了多少障礙。", "s": "《Up from Slavery》"}, {"q": "Courage is resistance to fear, mastery of fear—not absence of fear.", "a": "Mark Twain", "zh": "勇氣是抵抗恐懼、駕馭恐懼，而不是沒有恐懼。", "s": "《Pudd'nhead Wilson》"}, {"q": "Great things are done by a series of small things brought together.", "a": "Vincent van Gogh", "zh": "偉大的事，是由一連串小事累積而成的。", "s": "致弟弟 Theo 的信"}, {"q": "Everyone thinks of changing the world, but no one thinks of changing himself.", "a": "Leo Tolstoy", "zh": "每個人都想改變世界，卻沒有人想改變自己。", "s": ""}, {"q": "The beginning is the most important part of the work.", "a": "Plato", "zh": "開始是整件工作最重要的部分。", "s": "《理想國》"}, {"q": "Learning never exhausts the mind.", "a": "Leonardo da Vinci", "zh": "學習永遠不會讓心智疲乏。", "s": "筆記本"}, {"q": "Nothing in life is to be feared, it is only to be understood.", "a": "Marie Curie", "zh": "生活中沒有什麼需要害怕，只需要去了解。", "s": ""}, {"q": "What you do makes a difference, and you have to decide what kind of difference you want to make.", "a": "Jane Goodall", "zh": "你做的事會造成影響，你得決定想造成哪種影響。", "s": ""}];
+const quoteToday = () => { const d = Math.floor((Date.now() - new Date(2026, 10, 20).getTime()) / 864e5); return QUOTES[((d % QUOTES.length) + QUOTES.length) % QUOTES.length]; };
+const BUILD = '61a5cfef75';
 const UNIT_SIZE = 50, REINSERT = 5, STATE_KEY = 'vocab-state-v1', THEME_KEY = 'vocab-theme', VOICE_KEY = 'vocab-voice';
 const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const $ = s => document.querySelector(s);
@@ -722,7 +730,7 @@ function openStats(){
   const weak = ids.filter(i => BY[i].hl).length, worst = Object.entries(state.stats).filter(([, s]) => s.L > 0).sort((a, b) => b[1].L - a[1].L).slice(0, 5);
   const th = lget(THEME_KEY) || 'auto', vs = enVoices(); if (!voice) pickVoice();
   const html = `
-    <div class="sec quote"><span class="lbl">今日佳句</span><p>每天早上 6 點更新的程式上線後，這裡會出現一句名人佳句和中文翻譯。</p></div>
+    ${(() => { const q = quoteToday(); return `<div class="sec qcard2"><span class="lbl">今日佳句</span><button class="qt" type="button" data-say="${esc(q.q)}" aria-label="聽這句話的發音"><span class="qt-mark" aria-hidden="true">“</span><span class="qt-en" lang="en">${esc(q.q)}</span></button><p class="qt-zh">${esc(q.zh)}</p><div class="qt-by">— ${esc(q.a)}${q.s ? `<span>${esc(q.s)}</span>` : ''}</div></div>`; })()}
     <div class="sec big-rings"><svg class="rings" id="bigRings" width="104" height="104"></svg>
       <div class="legend"><div><i style="background:var(--r1)"></i>本輪熟悉<b>${k}/${t}</b></div><div><i style="background:var(--r2)"></i>單元測驗<b>${state.r1done[state.unit] ? quizCount().join('/') : '未開放'}</b></div><div><i style="background:var(--r3)"></i>滑過熟悉的字<b>${seen}/${WORDS.length}</b></div></div></div>
     <div class="sec tiles">
@@ -732,7 +740,7 @@ function openStats(){
       <div class="tile"><b>${state.unit + 1} / ${state.unitCount}</b><span>單元（目前整理了 ${WORDS.length} 字）</span></div></div>
     <div class="sec"><span class="lbl">最常滑「不熟」的字</span>${worst.length ? worst.map(([i, s]) => li(BY[i].w, BY[i].zh.split(/[；;]/)[0], `不熟 ${s.L} 次 · 熟悉 ${s.R} 次`)).join('') : '<p class="muted">還沒有。左滑過的字會列在這裡。</p>'}</div>
     ${devHTML()}
-    <p class="muted" style="text-align:center">版本 ${BUILD === 'a11e4e9e13' ? 'claude.ai' : BUILD}</p>
+    <p class="muted" style="text-align:center">版本 ${BUILD === '61a5cfef75' ? 'claude.ai' : BUILD}</p>
     <div class="sec"><span class="lbl">設定</span>
       <div class="setting"><span>外觀</span><div class="seg" role="group" aria-label="外觀">${[['auto','自動'],['light','淺色'],['dark','深色']].map(([v, n]) => `<button type="button" data-theme-set="${v}" aria-pressed="${th === v}">${n}</button>`).join('')}</div></div>
       <div class="setting" style="flex-direction:column;align-items:stretch;gap:8px"><span>發音聲音</span>${vs.length
@@ -1098,7 +1106,7 @@ async function renderArticle(){
   artKnown = new Set();
   const firstP = a.paras.findIndex(p => p.k === 'p');
   const body = a.paras.map((p, i) => p.k === 'h' ? `<h3 class="art-sub">${esc(p.t)}</h3>`
-    : `<p class="art-p${i === firstP ? ' lead' : ''}${/^["“]/.test(p.t) ? ' quote' : ''}" lang="en">${artParaHTML(p.t)}</p>`).join('');
+    : `<p class="art-p${i === firstP ? ' lead' : ''}${/^["“]/.test(p.t) ? ' pull' : ''}" lang="en">${artParaHTML(p.t)}</p>`).join('');
   const known = [...artKnown].map(id => BY[id]).filter(Boolean);
   const others = ART.filter(x => x.id !== a.id).map(x => { const d = state.art.done[x.id]; return `<button class="art-o" data-art="${x.id}"><b lang="en">${esc(x.title)}</b><small><span>${esc(x.source)} · ${x.words} 字</span>${d ? `<span class="dn">答對 ${d.s}/${d.n}</span>` : ''}</small></button>`; }).join('');
   root.innerHTML = `<div class="art" style="--fs:${fs}px"><div class="art-prog" aria-hidden="true"><i id="artProgBar"></i></div>
