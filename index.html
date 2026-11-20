@@ -402,6 +402,7 @@ u{text-decoration:none;color:var(--root);font-weight:800}
 
 <script>
 (() => {
+const BUILD = 'a11e4e9e13';
 const UNIT_SIZE = 50, REINSERT = 5, STATE_KEY = 'vocab-state-v1', THEME_KEY = 'vocab-theme', VOICE_KEY = 'vocab-voice';
 const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const $ = s => document.querySelector(s);
@@ -731,6 +732,7 @@ function openStats(){
       <div class="tile"><b>${state.unit + 1} / ${state.unitCount}</b><span>單元（目前整理了 ${WORDS.length} 字）</span></div></div>
     <div class="sec"><span class="lbl">最常滑「不熟」的字</span>${worst.length ? worst.map(([i, s]) => li(BY[i].w, BY[i].zh.split(/[；;]/)[0], `不熟 ${s.L} 次 · 熟悉 ${s.R} 次`)).join('') : '<p class="muted">還沒有。左滑過的字會列在這裡。</p>'}</div>
     ${devHTML()}
+    <p class="muted" style="text-align:center">版本 ${BUILD === 'a11e4e9e13' ? 'claude.ai' : BUILD}</p>
     <div class="sec"><span class="lbl">設定</span>
       <div class="setting"><span>外觀</span><div class="seg" role="group" aria-label="外觀">${[['auto','自動'],['light','淺色'],['dark','深色']].map(([v, n]) => `<button type="button" data-theme-set="${v}" aria-pressed="${th === v}">${n}</button>`).join('')}</div></div>
       <div class="setting" style="flex-direction:column;align-items:stretch;gap:8px"><span>發音聲音</span>${vs.length
@@ -1186,7 +1188,11 @@ if (window.visualViewport) {
   visualViewport.addEventListener('resize', fit); visualViewport.addEventListener('scroll', () => { if (scrollY) scrollTo(0, 0); });
 }
 /* ---------- boot ---------- */
-if ('serviceWorker' in navigator && location.protocol !== 'file:') navigator.serviceWorker.register('sw.js').catch(() => {});
+if ('serviceWorker' in navigator && location.protocol !== 'file:') {
+  const had = !!navigator.serviceWorker.controller; let reloaded = false;
+  navigator.serviceWorker.register('sw.js').then(reg => { reg.update().catch(() => {}); document.addEventListener('visibilitychange', () => { if (!document.hidden) reg.update().catch(() => {}); }); }).catch(() => {});
+  navigator.serviceWorker.addEventListener('controllerchange', () => { if (had && !reloaded) { reloaded = true; location.reload(); } });
+}
 navigator.storage?.persist?.().catch(() => {});
 ringsInit($('#hdRings'));
 fetch('words.json').then(r => { if (!r.ok) throw 0; return r.json(); }).then(data => {
