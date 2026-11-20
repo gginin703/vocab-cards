@@ -326,6 +326,11 @@ u{text-decoration:none;color:var(--root);font-weight:800}
 .wc-ipa{color:var(--t3);font-size:14px;margin-top:2px}
 .wc-zh{font-size:19px;font-weight:800;margin-top:6px;line-height:1.4}
 .wc-en{color:var(--t2);font-size:14px;margin-top:4px;line-height:1.5}
+.wc-def{margin-top:8px;font-size:14px;color:var(--t2);line-height:1.5;max-height:34vh;overflow-y:auto}
+.wc-m{display:flex;gap:8px;margin-top:4px}
+.wc-m b{flex:0 0 auto;color:var(--t1);font-weight:800}
+.wc-acts{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:8px}
+.wc-acts .wc-link{margin:0}
 .wc-link{display:inline-block;margin-top:8px;color:var(--r3);font-weight:700;font-size:15px;min-height:36px}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
 </style>
@@ -934,15 +939,76 @@ function artParaHTML(text){
   }
   return out + esc(text.slice(last));
 }
-function showWordCard(raw){
-  const hit = lookup(raw), card = $('#wordCard'); clearTimeout(wordCardTimer);
-  const base = raw.replace(/[’']s$/i, '');
-  card.innerHTML = hit
-    ? `<div class="wc-top"><b lang="en">${esc(raw)}</b>${hit.w.toLowerCase() !== raw.toLowerCase() ? `<span class="wc-base">原形 ${esc(hit.w)}</span>` : ''}<span class="lv">${esc(hit.lv)}</span><button class="speak" data-say="${esc(hit.w)}" aria-label="播放發音">${SPK}</button></div>
-       <div class="wc-ipa">${esc(hit.pos)}　/${esc(hit.ipa)}/</div><div class="wc-zh">${esc(hit.zh)}</div><div class="wc-en" lang="en">${esc(hit.en)}</div>`
-    : `<div class="wc-top"><b lang="en">${esc(raw)}</b><button class="speak" data-say="${esc(raw)}" aria-label="播放發音">${SPK}</button></div>
-       <div class="wc-zh" style="font-size:15px;font-weight:600;color:var(--t2)">這個字不在你的單字書裡</div>
-       <a class="wc-link" href="https://dictionary.cambridge.org/dictionary/english-chinese-traditional/${encodeURIComponent(base.toLowerCase())}" target="_blank" rel="noopener">查劍橋字典 ›</a>`;
+const POS_ABBR = { noun: 'n.', verb: 'v.', adjective: 'a.', adverb: 'ad.', pronoun: 'pron.', preposition: 'prep.', conjunction: 'conj.', interjection: 'int.', exclamation: 'int.' };
+const DICT = {};
+function lemmaCands(raw){
+  const w = raw.toLowerCase().replace(/’/g, "'").replace(/^-+|-+$/g, ''), c = [w];
+  if (w.endsWith("'s")) c.push(w.slice(0, -2));
+  if (w.endsWith('ies')) c.push(w.slice(0, -3) + 'y');
+  if (w.endsWith('ied')) c.push(w.slice(0, -3) + 'y');
+  if (w.endsWith('es')) c.push(w.slice(0, -2));
+  if (w.endsWith('s')) c.push(w.slice(0, -1));
+  if (w.endsWith('ed')) { c.push(w.slice(0, -2), w.slice(0, -1)); if (w.length > 5 && w[w.length - 3] === w[w.length - 4]) c.push(w.slice(0, -3)); }
+  if (w.endsWith('ing')) { c.push(w.slice(0, -3), w.slice(0, -3) + 'e'); if (w.length > 6 && w[w.length - 4] === w[w.length - 5]) c.push(w.slice(0, -4)); }
+  if (w.endsWith('ly')) c.push(w.slice(0, -2));
+  return [...new Set(c)].filter(x => x.length > 1);
+}
+async function dictLookup(raw){
+  const key = raw.toLowerCase();
+  if (DICT[key]) return DICT[key];
+  try { const saved = JSON.parse(lget('vocab-dict') || '{}'); if (saved[key]) return DICT[key] = saved[key]; } catch {}
+  for (const c of lemmaCands(raw)) {
+    try {
+      const r = await fetch('https://api.dictionaryapi.dev/api/v2/entries/en/' + encodeURIComponent(c));
+      if (!r.ok) continue;
+      const d = await r.json(), ms = [];
+      for (const e of d) for (const m of e.meanings || []) { const df = m.definitions?.[0]?.definition; if (df && !ms.some(x => x.p === m.partOfSpeech)) ms.push({ p: m.partOfSpeech, d: df }); }
+      if (!ms.length) continue;
+      const res = { w: c, ms: ms.slice(0, 3) }; DICT[key] = res;
+      try { const saved = JSON.parse(lget('vocab-dict') || '{}'); const ks = Object.keys(saved); if (ks.length > 300) delete saved[ks[0]]; saved[key] = res; lset('vocab-dict', JSON.stringify(saved)); } catch {}
+      return res;
+    } catch { return 'offline'; }
+  }
+  return null;
+}
+function sentenceAround(el){
+  const p = el.closest('.art-p'); if (!p) return '';
+  const text = p.textContent, i = (() => { let n = 0; for (const x of p.querySelectorAll('.aw')) { if (x === el) break; n += x.textContent.length; } return text.indexOf(el.textContent, 0) < 0 ? 0 : text.indexOf(el.textContent, Math.max(0, n - 2)); })();
+  const parts = text.match(/[^.!?]+[.!?]*/g) || [text]; let acc = 0;
+  for (const s of parts) { acc += s.length; if (acc > i) return s.trim().slice(0, 300); }
+  return text.slice(0, 300);
+}
+let wcToken = 0;
+function showWordCard(raw, srcEl){
+  const hit = lookup(raw), card = $('#wordCard'), token = ++wcToken; clearTimeout(wordCardTimer);
+  if (hit) {
+    card.innerHTML = `<div class="wc-top"><b lang="en">${esc(raw)}</b>${hit.w.toLowerCase() !== raw.toLowerCase() ? `<span class="wc-base">原形 ${esc(hit.w)}</span>` : ''}<span class="lv">${esc(hit.lv)}</span><button class="speak" data-say="${esc(hit.w)}" aria-label="播放發音">${SPK}</button></div>
+       <div class="wc-ipa">${esc(hit.pos)}　/${esc(hit.ipa)}/</div><div class="wc-zh">${esc(hit.zh)}</div><div class="wc-en" lang="en">${esc(hit.en)}</div>`;
+  } else {
+    card.innerHTML = `<div class="wc-top"><b lang="en">${esc(raw)}</b><span class="wc-base">不在你的單字書</span><button class="speak" data-say="${esc(raw)}" aria-label="播放發音">${SPK}</button></div>
+       <div class="wc-def" id="wcDef"><span class="muted" style="margin:0">查詢中…</span></div><div class="wc-acts" id="wcActs"></div>`;
+    dictLookup(raw).then(res => {
+      if (token !== wcToken) return; const el = $('#wcDef'); if (!el) return;
+      if (res === 'offline') el.innerHTML = '<span class="muted" style="margin:0">沒有網路，查不到。</span>';
+      else if (!res) el.innerHTML = '<span class="muted" style="margin:0">字典裡找不到這個字（可能是人名或專有名詞）。</span>';
+      else el.innerHTML = (res.w !== raw.toLowerCase() ? `<div class="wc-base" style="margin-bottom:4px">原形 ${esc(res.w)}</div>` : '') + res.ms.map(m => `<div class="wc-m"><b>${esc(POS_ABBR[m.p] || m.p)}</b><span lang="en">${esc(m.d)}</span></div>`).join('');
+    });
+    const acts = $('#wcActs');
+    acts.innerHTML = `<a class="wc-link" href="https://dictionary.cambridge.org/dictionary/english-chinese-traditional/${encodeURIComponent(raw.toLowerCase().replace(/[’']s$/, ''))}" target="_blank" rel="noopener">劍橋字典 ›</a>`;
+    if (window.claude?.use) {
+      const b = document.createElement('button'); b.className = 'chip'; b.type = 'button'; b.id = 'wcAsk'; b.textContent = '問 Claude 中文意思'; acts.prepend(b);
+      b.onclick = async () => {
+        b.disabled = true; b.textContent = '詢問中…';
+        try {
+          const sample = await claude.use('sample'); if (!sample) { b.remove(); return; }
+          const sent = srcEl ? sentenceAround(srcEl) : '';
+          const out = await sample(`只回一行，格式「詞性 中文意思」，用台灣繁體中文，不要任何其他文字。單字：${raw}${sent ? `\n出現的句子：${sent}` : ''}`, { modelTier: 'quick', cache: true });
+          if (token !== wcToken) return;
+          b.outerHTML = `<div class="wc-zh" id="wcClaude">${esc(String(out.text || '').split('\n')[0].trim())}</div>`;
+        } catch (e) { b.disabled = false; b.textContent = e?.code === 'rate_limited' ? '太頻繁了，稍後再試' : e?.code === 'not_granted' ? '你選了不允許' : '問 Claude 失敗，再試一次'; }
+      };
+    }
+  }
   card.hidden = false; requestAnimationFrame(() => card.classList.add('on'));
   card.querySelector('[data-say]').onclick = ev => speak(ev.currentTarget.dataset.say, ev.currentTarget);
   speak(hit ? hit.w : raw);
@@ -954,12 +1020,12 @@ function bindArticleWords(root){
   root.addEventListener('pointerdown', e => {
     const el = e.target.closest('.aw'); if (!el) { hideWordCard(); return; }
     long = false; down = { x: e.clientX, y: e.clientY }; el.classList.add('press');
-    timer = setTimeout(() => { long = true; try { navigator.vibrate?.(8); } catch {} showWordCard(el.dataset.w); }, 380);
+    timer = setTimeout(() => { long = true; try { navigator.vibrate?.(8); } catch {} showWordCard(el.dataset.w, el); }, 380);
   });
   root.addEventListener('pointermove', e => { if (down && Math.hypot(e.clientX - down.x, e.clientY - down.y) > 8) clear(); });
   root.addEventListener('pointerup', e => {
     const el = e.target.closest('.aw'); const was = timer !== null; clear();
-    if (el && was && !long && el.classList.contains('k')) showWordCard(el.dataset.w);
+    if (el && was && !long && el.classList.contains('k')) showWordCard(el.dataset.w, el);
   });
   root.addEventListener('pointercancel', clear); root.addEventListener('contextmenu', e => e.preventDefault());
   root.addEventListener('scroll', hideWordCard, { passive: true });
