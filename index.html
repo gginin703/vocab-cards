@@ -953,7 +953,7 @@ function lemmaCands(raw){
   if (w.endsWith('ly')) c.push(w.slice(0, -2));
   return [...new Set(c)].filter(x => x.length > 1);
 }
-async function dictLookup(raw){
+async function dictLookupA(raw){
   const key = raw.toLowerCase();
   if (DICT[key]) return DICT[key];
   try { const saved = JSON.parse(lget('vocab-dict') || '{}'); if (saved[key]) return DICT[key] = saved[key]; } catch {}
@@ -970,6 +970,24 @@ async function dictLookup(raw){
     } catch { return 'offline'; }
   }
   return null;
+}
+async function dictLookup(raw){
+  const a = await dictLookupA(raw);
+  if (a && a !== 'offline') return a;
+  try {
+    const r = await fetch('https://api.datamuse.com/words?sp=' + encodeURIComponent(raw.toLowerCase()) + '&md=d&max=1');
+    if (r.ok) {
+      const d = await r.json(), ds = d[0]?.defs || [], ms = [], full = { n: 'noun', v: 'verb', adj: 'adjective', adv: 'adverb' };
+      for (const x of ds) {
+        const [p, ...rest] = x.split('\t'), t = rest.join('\t').trim();
+        if (/archaic|obsolete|rare|misspelling/i.test(t)) continue;
+        if (!ms.some(m => m.p === (full[p] || p))) ms.push({ p: full[p] || p, d: t.replace(/^(\([^)]*\)\s*)+/, '') || t });
+      }
+      if (ms.length) { const res = { w: d[0].defHeadword || d[0].word, ms: ms.slice(0, 3) }; DICT[raw.toLowerCase()] = res; return res; }
+      return a === 'offline' ? null : a;
+    }
+  } catch { return 'blocked'; }
+  return a;
 }
 function sentenceAround(el){
   const p = el.closest('.art-p'); if (!p) return '';
@@ -989,7 +1007,7 @@ function showWordCard(raw, srcEl){
        <div class="wc-def" id="wcDef"><span class="muted" style="margin:0">查詢中…</span></div><div class="wc-acts" id="wcActs"></div>`;
     dictLookup(raw).then(res => {
       if (token !== wcToken) return; const el = $('#wcDef'); if (!el) return;
-      if (res === 'offline') el.innerHTML = '<span class="muted" style="margin:0">沒有網路，查不到。</span>';
+      if (res === 'offline' || res === 'blocked') el.innerHTML = '<span class="muted" style="margin:0">' + (navigator.onLine === false ? '沒有網路，查不到。' : window.claude?.use ? 'claude.ai 版本不能直接連外部字典，請按下面的「問 Claude 中文意思」，或用主畫面的 App 查。' : '連不到字典網站，可能是你的網路擋住了。可以改按下面的劍橋字典。') + '</span>';
       else if (!res) el.innerHTML = '<span class="muted" style="margin:0">字典裡找不到這個字（可能是人名或專有名詞）。</span>';
       else el.innerHTML = (res.w !== raw.toLowerCase() ? `<div class="wc-base" style="margin-bottom:4px">原形 ${esc(res.w)}</div>` : '') + res.ms.map(m => `<div class="wc-m"><b>${esc(POS_ABBR[m.p] || m.p)}</b><span lang="en">${esc(m.d)}</span></div>`).join('');
     });
