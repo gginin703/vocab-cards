@@ -642,7 +642,7 @@ function typesFor(id, old){
   return ['choose', ...(w.ctx ? ['context'] : []), ...t];
 }
 function quizPool(){
-  const prev = planUnits().slice(0, state.unit).flat(), ws = state.wstat, now = Date.now();
+  const prev = (state.past || []), ws = state.wstat, now = Date.now();
   const score = id => { const x = ws[id] || {}; return (isLong(id) ? 1e9 : 0) + (x.fam || 0) * 1e6 - (x.wrong && now - x.wrong < 7 * DAY ? 5e5 : 0) + (x.last || 0) / 1e7; };
   return { neu: state.unitIds.slice(), old: prev.filter(id => BY[id]).sort((a, b) => score(a) - score(b)).slice(0, 30) };
 }
@@ -688,9 +688,17 @@ function answerQ(ok){
   if (!state.days.includes(today())) state.days.push(today());
   q.cur = null; save(); renderHeader();
 }
+function nextUnitIds(){
+  const used = new Set([...(state.past || []), ...state.unitIds]), r = rng(20261113 + state.unit), lv = {};
+  WORDS.forEach(w => { if (!used.has(w.id)) (lv[w.lv] ||= []).push(w.id); });
+  const pools = Object.keys(lv).sort().map(k => shuffle(lv[k], r)), out = [];
+  while (pools.some(p => p.length) && out.length < UNIT_SIZE) pools.forEach(p => p.length && out.length < UNIT_SIZE && out.push(p.shift()));
+  return out;
+}
 function nextUnit(){
-  const u = planUnits(); if (state.unit + 1 >= u.length) return;
-  state.unit++; state.unitIds = u[state.unit]; state.unitCount = u.length; state.round = 1; state.deck = shuffle(state.unitIds);
+  const ids = nextUnitIds(); if (!ids.length) return;
+  state.past = [...(state.past || []), ...state.unitIds];
+  state.unit++; state.unitIds = ids; state.unitCount = Math.ceil(WORDS.length / UNIT_SIZE); state.round = 1; state.deck = shuffle(state.unitIds);
   state.known = []; state.roundDone = false; state.quiz = null; lastSnap = null; flipped = false; save();
   setView('cards'); renderCards(0); toast(`Unit ${state.unit + 1} 開始，先滑完第 1 輪字卡`);
 }
@@ -700,7 +708,7 @@ function renderQuiz(){
   const head = `<div class="qhead"><div><span class="tag">Unit ${state.unit + 1}</span><h2>測驗</h2></div><div class="qcount"><b>${f}</b> / ${t} 熟悉</div></div>
     <div class="meter" aria-hidden="true"><i style="transform:scaleX(${t ? f / t : 0});background:var(--r2)"></i></div>`;
   if (f === t) {
-    const last = state.unit + 1 >= state.unitCount;
+    const last = !nextUnitIds().length;
     root.innerHTML = head + `<div class="panel"><h3>Unit ${state.unit + 1} 全部熟悉</h3><p>${t} 個字都通過了，一共答了 ${q.n} 題。</p>${last
       ? '<p class="muted">這是目前整理好的最後一個單元。單字書下一批頁數整理好後，就能繼續。</p>'
       : `<button class="btn" id="goNext">進入 Unit ${state.unit + 2}</button>`}</div>`;
