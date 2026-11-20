@@ -213,31 +213,92 @@ u{text-decoration:none;color:var(--root);font-weight:800}
 /* quiz */
 .app{grid-template-columns:minmax(0,1fr)}
 .page>*,.qcard>*{flex-shrink:0}
-.qhead{display:flex;justify-content:space-between;align-items:flex-end;gap:12px}
-.qhead .tag{margin-bottom:2px}
-.qcount{color:var(--t2);font-size:15px;font-variant-numeric:tabular-nums;white-space:nowrap}
-.qcount b{color:var(--t1);font-size:22px;font-weight:800}
-.qcard{display:flex;flex-direction:column;gap:12px}
-.qzh{font-size:24px;font-weight:800;line-height:1.35;color:var(--t1);overflow-wrap:anywhere}
-.qsub{color:var(--t3);font-size:14px;margin:0}
-.qsent{font-size:17px;line-height:1.65;color:var(--t1);margin:0}
-.qsent .blank{display:inline-block;min-width:4.5em;border-bottom:2.5px solid var(--r2);margin:0 2px;height:1.1em;vertical-align:-2px}
-.opts{display:grid;gap:8px}
-.opt{min-height:52px;padding:10px 14px;border-radius:14px;background:var(--s2);text-align:left;font-size:18px;font-weight:700;color:var(--t1);border:2px solid transparent;transition:transform .2s var(--ease-bounce),background .2s,border-color .2s}
-.opt:active{transform:scale(.98)}
-.opt.right{border-color:var(--root)}
-.opt.wrong{border-color:var(--no);background:var(--no-bg)}
+.qwrap{display:flex;flex-direction:column;gap:14px;min-height:100%;animation:viewin .35s var(--ease-out) both}
+.qtop{display:flex;align-items:center;gap:12px;padding-top:2px}
+.qtop .tag{margin:0;white-space:nowrap}
+.qprog{flex:1;display:flex;align-items:center;gap:10px;min-width:0}
+.qbar{flex:1;height:10px;border-radius:5px;background:var(--s2);overflow:hidden}
+.qbar i{display:block;height:100%;border-radius:5px;background:linear-gradient(90deg,var(--r2),var(--r3));transform-origin:left;transition:transform .7s var(--ease-ios)}
+.qcount{color:var(--t3);font-size:14px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.qcount b{color:var(--t1);font-size:18px;font-weight:800}
+.qstreak{font-size:12px;font-weight:800;color:var(--warn);border:1px solid currentColor;border-radius:999px;padding:2px 9px;white-space:nowrap;animation:popin .45s var(--ease-bounce) both}
+.qcard{position:relative;background:var(--s1);border:1px solid var(--ln);border-radius:26px;box-shadow:var(--card-shadow);padding:18px 18px 20px;display:flex;flex-direction:column;gap:16px;animation:qin .45s var(--ease-ios) both;overflow:hidden}
+.qcard::before{content:"";position:absolute;left:0;right:0;top:0;height:4px;background:var(--r3)}
+.qcard.t-choose::before{background:var(--r3)} .qcard.t-spell::before{background:var(--pre)} .qcard.t-listen::before{background:var(--r1)} .qcard.t-cloze::before{background:var(--r2)}
+@keyframes qin{from{opacity:0;transform:translateY(18px) scale(.98)}}
+.qmeta{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:2px}
+.qbadge{font-size:12px;font-weight:800;letter-spacing:.4px;padding:4px 10px;border-radius:999px;background:var(--s2);color:var(--t2)}
+.qold{font-size:12px;font-weight:700;color:var(--t3)}
+.pips{margin-left:auto;display:flex;gap:5px}
+.pip{width:9px;height:9px;border-radius:5px;border:1.5px solid var(--t3);opacity:.55;transition:all .35s var(--ease-bounce)}
+.pip.on{background:var(--r2);border-color:var(--r2);opacity:1}
+.pip.cur{opacity:1;border-color:var(--t1);transform:scale(1.25)}
+.qzh{font-size:clamp(26px,8vw,32px);font-weight:800;line-height:1.3;letter-spacing:-.3px;color:var(--t1);overflow-wrap:anywhere}
+.qsub{color:var(--t3);font-size:14px;margin:0;line-height:1.5}
+.qsent{font-size:18px;line-height:1.75;color:var(--t1);margin:0}
+.qsent .blank{display:inline-block;min-width:3.2em;border-bottom:3px solid var(--r2);margin:0 3px;height:1.05em;vertical-align:-3px;transition:all .3s}
+.qsent .blank.fill{border-bottom-color:transparent;font-weight:800;color:var(--root);min-width:0;height:auto;vertical-align:baseline;animation:popin .4s var(--ease-bounce) both}
+.qsent .blank.fill.bad{color:var(--no)}
+.opts{display:grid;gap:10px}
+.opt{display:flex;align-items:center;gap:12px;min-height:58px;padding:10px 14px;border-radius:16px;background:var(--s2);text-align:left;font-size:19px;font-weight:700;color:var(--t1);border:2px solid transparent;transition:transform .25s var(--ease-bounce),background .2s,border-color .2s;animation:qin .45s var(--ease-ios) both}
+.opt:nth-child(2){animation-delay:.04s}.opt:nth-child(3){animation-delay:.08s}.opt:nth-child(4){animation-delay:.12s}
+.opt .k{flex:0 0 28px;height:28px;border-radius:9px;background:var(--s3);color:var(--t2);font-size:13px;font-weight:800;display:grid;place-items:center;transition:all .2s}
+.opt:active:not(:disabled){transform:scale(.97)}
+.opt.right{border-color:var(--root);background:color-mix(in srgb,var(--root) 14%,transparent)}
+.opt.right .k{background:var(--root);color:var(--btn-fg)}
+.opt.wrong{border-color:var(--no);background:var(--no-bg);animation:shake .45s}
+.opt.wrong .k{background:var(--no);color:#fff}
 .opt:disabled{cursor:default}
-.qin{display:flex;gap:8px;flex-wrap:wrap}
-.qin input{flex:1 1 180px;width:0;min-width:0;min-height:52px;border-radius:14px;border:2px solid var(--ln);background:var(--s2);color:var(--t1);font:inherit;font-size:20px;font-weight:700;padding:0 14px}
-.qin input:focus{outline:none;border-color:var(--r3)}
-.qplay{align-self:flex-start;display:flex;align-items:center;gap:10px;min-height:56px;padding:0 20px;border-radius:16px;background:var(--s2);font-weight:800;font-size:16px;color:var(--t1)}
-.qplay svg{width:22px;height:22px;fill:var(--t1)}
-.qacts{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-.fb{border-radius:16px;padding:12px 14px;font-size:15px;line-height:1.55;color:var(--t1);background:var(--s2);border-left:4px solid var(--root)}
-.fb.bad{background:var(--no-bg);border-left-color:var(--no)}
-.fb b{font-size:18px}
-.fb .muted{margin-top:2px}
+.opt:disabled:not(.right):not(.wrong){opacity:.45}
+@keyframes shake{20%{transform:translateX(-7px)}40%{transform:translateX(6px)}60%{transform:translateX(-4px)}80%{transform:translateX(3px)}}
+.qfield{position:relative;cursor:text}
+.boxes{display:flex;flex-wrap:nowrap;gap:5px;justify-content:center}
+.boxes.many{gap:3px}.boxes.many .bx{font-size:16px;border-radius:8px}
+.bx{flex:1 1 0;min-width:0;max-width:42px;height:clamp(44px,13vw,54px);border-radius:12px;background:var(--s2);border:2px solid transparent;display:grid;place-items:center;font-size:clamp(20px,6vw,26px);font-weight:800;text-transform:lowercase;transition:border-color .15s,background .15s,transform .15s var(--ease-bounce)}
+.bx.has{background:var(--s3);transform:scale(1.04)}
+.bx.cur{border-color:var(--r3)}
+.bx.cur.has{border-color:transparent}
+.boxes.focus .bx.cur{animation:caret 1s steps(1) infinite}
+@keyframes caret{50%{border-color:transparent}}
+.boxes.ok .bx{background:color-mix(in srgb,var(--root) 18%,transparent);color:var(--root);border-color:var(--root);animation:hop .5s var(--ease-bounce) both;animation-delay:calc(var(--i) * 45ms)}
+.boxes.bad .bx{background:var(--no-bg);color:var(--no);border-color:var(--no);animation:shake .45s}
+@keyframes hop{40%{transform:translateY(-8px)}}
+.sep{display:grid;place-items:center;font-size:24px;font-weight:800;color:var(--t3);flex:0 0 12px}
+.qfield input{position:absolute;inset:0;width:100%;height:100%;opacity:0;font-size:16px;border:0;background:none;color:transparent;caret-color:transparent}
+.qplay{align-self:center;position:relative;display:grid;place-items:center;width:92px;height:92px;border-radius:50%;background:var(--s2);color:var(--t1);transition:transform .3s var(--ease-bounce)}
+.qplay:active{transform:scale(.92)}
+.qplay svg{width:34px;height:34px;fill:var(--t1);position:relative}
+.qplay::before,.qplay::after{content:"";position:absolute;inset:0;border-radius:50%;border:2px solid var(--r1);opacity:0}
+.qplay.playing::before{animation:qring 1.4s var(--ease-out) infinite}.qplay.playing::after{animation:qring 1.4s .5s var(--ease-out) infinite}
+@keyframes qring{from{opacity:.7;transform:scale(1)}to{opacity:0;transform:scale(1.7)}}
+.qlen{text-align:center;color:var(--t3);font-size:13px;margin:0}
+.qfoot{display:flex;flex-direction:column;gap:10px;align-items:stretch}
+.btn.big{width:100%;min-height:54px;font-size:17px}
+.btn:disabled{opacity:.35;cursor:default;transform:none}
+.qlink{align-self:center;color:var(--t3);font-weight:700;font-size:14px;min-height:44px;padding:0 12px}
+.qfb{border-radius:22px;padding:16px;animation:fbin .5s var(--ease-ios) both;display:flex;flex-direction:column;gap:6px}
+.qfb.ok{background:color-mix(in srgb,var(--root) 14%,var(--s1));border:1.5px solid var(--root)}
+.qfb.bad{background:var(--no-bg);border:1.5px solid var(--no)}
+@keyframes fbin{from{opacity:0;transform:translateY(24px)}}
+.qfb-h{display:flex;align-items:center;gap:8px;font-weight:800;font-size:15px}
+.qfb.ok .qfb-h{color:var(--root)}.qfb.bad .qfb-h{color:var(--no)}
+.qfb-h svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
+.qfb-a{font-size:28px;font-weight:800;letter-spacing:-.4px;color:var(--t1);overflow-wrap:anywhere}
+.qfb-s{color:var(--t2);font-size:15px}
+.qfb-n{color:var(--t3);font-size:13px}
+.qfb-fam{display:inline-flex;align-self:flex-start;align-items:center;gap:6px;font-size:13px;font-weight:800;color:var(--btn-fg);background:var(--btn);border-radius:999px;padding:4px 12px;animation:popin .5s .15s var(--ease-bounce) both}
+.qfb-acts{display:flex;gap:8px;margin-top:8px}
+.qfb-acts .btn{flex:1}
+.qsay{min-width:52px;border-radius:16px;background:var(--s2);display:grid;place-items:center;transition:transform .25s var(--ease-bounce)}
+.qsay:active{transform:scale(.9)}
+.qsay svg{width:22px;height:22px;fill:var(--t1)}
+.qdone{display:flex;flex-direction:column;align-items:center;text-align:center;gap:10px;padding:26px 18px;animation:popin .6s var(--ease-bounce) both}
+.qdone h3{margin:0;font-size:26px;font-weight:800;letter-spacing:-.5px}
+.qdone p{margin:0;color:var(--t2);font-size:15px}
+.qstats{display:grid;grid-template-columns:1fr 1fr;gap:10px;width:100%;margin:6px 0}
+.qstats div{background:var(--s2);border-radius:16px;padding:10px}
+.qstats b{display:block;font-size:24px;font-weight:800;font-variant-numeric:tabular-nums}
+.qstats span{font-size:12px;color:var(--t3)}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
 </style>
 </head>
@@ -728,60 +789,93 @@ function nextUnit(){
 function renderQuiz(){
   const root = $('#quizRoot'); if (!root) return;
   const q = ensureQuiz(), [f, t] = quizCount();
-  const head = `<div class="qhead"><div><span class="tag">Unit ${state.unit + 1}</span><h2>測驗</h2></div><div class="qcount"><b>${f}</b> / ${t} 熟悉</div></div>
-    <div class="meter" aria-hidden="true"><i style="transform:scaleX(${t ? f / t : 0});background:var(--r2)"></i></div>`;
+  const CHECK = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7"/></svg>', CROSS = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>';
+  const top = `<div class="qtop"><span class="tag">Unit ${state.unit + 1}</span><div class="qprog"><div class="qbar" aria-hidden="true"><i id="qbar" style="transform:scaleX(${t ? f / t : 0})"></i></div><span class="qcount" id="qcount" aria-live="polite"><b>${f}</b>/${t}</span></div><span id="qstreak">${(q.streak || 0) >= 3 ? `<span class="qstreak">連對 ${q.streak}</span>` : ''}</span></div>`;
   if (f === t) {
-    const last = !nextUnitIds().length;
-    root.innerHTML = head + `<div class="panel"><h3>Unit ${state.unit + 1} 全部熟悉</h3><p>${t} 個字都通過了，一共答了 ${q.n} 題。</p>${last
-      ? '<p class="muted">這是目前整理好的最後一個單元。單字書下一批頁數整理好後，就能繼續。</p>'
-      : `<button class="btn" id="goNext">進入 Unit ${state.unit + 2}</button>`}</div>`;
-    const b = $('#goNext'); if (b) b.onclick = nextUnit; return;
+    const last = !nextUnitIds().length, acc = q.n ? Math.round((q.ok || 0) / q.n * 100) : 100;
+    root.innerHTML = `<div class="qwrap">${top}<div class="panel qdone"><svg class="rings" id="qrings" width="130" height="130"></svg><h3>Unit ${state.unit + 1} 全部熟悉</h3><p>${t} 個字都通過了</p>
+      <div class="qstats"><div><b>${q.n || 0}</b><span>答題數</span></div><div><b>${acc}%</b><span>答對率</span></div></div>${last
+      ? '<p class="muted">這是目前整理好的最後一個單元。單字書下一批整理好後就能繼續。</p>'
+      : `<button class="btn big" id="goNext">進入 Unit ${state.unit + 2}</button>`}</div></div>`;
+    const sv = $('#qrings'); ringsInit(sv); requestAnimationFrame(() => requestAnimationFrame(() => ringsSet(sv, [1, 1, 1])));
+    const nb = $('#goNext'); if (nb) nb.onclick = nextUnit; return;
   }
   if (!q.cur || !q.words[q.cur.id]) { q.cur = pickQ(); save(); }
-  const c = q.cur, w = BY[c.id], e = q.words[c.id];
-  const meta = `<span class="lbl">${QT[c.type]}${e.old ? ' · 複習舊字' : ''} · 這個字 ${e.done.length}/${e.need.length}</span>`;
-  const field = (ph) => `<form class="qin" id="qform" autocomplete="off"><input id="qans" type="text" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="done" placeholder="${ph}" aria-label="輸入英文"><button class="btn" type="submit">確認</button></form>`;
-  const skip = `<div class="qacts"><button class="chip" id="qskip" type="button">不會，看答案</button></div>`;
+  const c = q.cur, w = BY[c.id], e = q.words[c.id], z = c.type === 'cloze' ? clozeOf(w) : null;
+  const ans = z ? z.form : w.w, letters = [...ans].filter(ch => /[a-z]/i.test(ch)).length;
+  const pips = e.need.map(tp => `<i class="pip${e.done.includes(tp) ? ' on' : ''}${tp === c.type ? ' cur' : ''}"></i>`).join('');
+  const meta = `<div class="qmeta"><span class="qbadge">${QT[c.type]}</span>${e.old ? '<span class="qold">複習舊字</span>' : ''}<span class="pips" role="img" aria-label="這個字已完成 ${e.done.length} / ${e.need.length} 種題型">${pips}</span></div>`;
+  const boxes = `<div class="qfield" id="qfield"><div class="boxes${letters > 10 ? ' many' : ''}" id="boxes" aria-hidden="true">${[...ans].map(ch => /[a-z]/i.test(ch) ? '<span class="bx"></span>' : `<span class="sep">${esc(ch)}</span>`).join('')}</div>
+    <input id="qans" type="text" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" enterkeyhint="done" maxlength="${letters + 2}" aria-label="輸入英文，共 ${letters} 個字母"></div>`;
+  const submit = `<div class="qfoot" id="qfoot"><button class="btn big" id="qgo" type="button" disabled>確認</button><button class="qlink" id="qskip" type="button">不會，看答案</button></div>`;
   let body = '';
   if (c.type === 'choose') {
-    body = `<div class="qzh">${esc(zh1(w))}</div><p class="qsub">${esc(w.pos)}　選出對應的英文單字</p>
-      <div class="opts">${c.opts.map(o => `<button class="opt" type="button" data-o="${o}" lang="en">${esc(BY[o].w)}</button>`).join('')}</div>`;
+    body = `<div><div class="qzh">${esc(zh1(w))}</div><p class="qsub" style="margin-top:6px">${esc(w.pos)}　選出對應的英文單字</p></div>
+      <div class="opts">${c.opts.map((o, i) => `<button class="opt" type="button" data-o="${o}" lang="en"><span class="k">${'ABCD'[i]}</span>${esc(BY[o].w)}</button>`).join('')}</div><div class="qfoot" id="qfoot"></div>`;
   } else if (c.type === 'spell') {
-    body = `<div class="qzh">${esc(zh1(w))}</div><p class="qsub">${esc(w.pos)}　${w.w.length} 個字母，要完全拼對</p>${field('拼出英文')}${skip}`;
+    body = `<div><div class="qzh">${esc(zh1(w))}</div><p class="qsub" style="margin-top:6px">${esc(w.pos)}　拼出英文，要完全拼對</p></div>${boxes}<p class="qlen">${letters} 個字母</p>${submit}`;
   } else if (c.type === 'listen') {
-    body = `<button class="qplay" id="qplay" type="button" aria-label="播放發音">${SPK}再聽一次</button><p class="qsub">聽發音，拼出這個字（${w.w.length} 個字母）</p>${field('聽到的字')}${skip}`;
-  } else if (c.type === 'cloze') {
-    const z = clozeOf(w), s0 = w.ex[0];
-    const sent = esc(s0.slice(0, z.at)) + '<span class="blank" aria-label="空格"></span>' + esc(s0.slice(z.at + z.form.length));
-    const diff = norm(z.form) !== norm(w.w);
-    body = `<p class="qsent" lang="en">${sent}</p><p class="qsub">${esc(w.ex[1])}</p><p class="qsub">提示：${esc(zh1(w))}${diff ? '，要照句子改成正確的詞形' : ''}</p>${field('填入空格的字')}${skip}`;
+    body = `<button class="qplay" id="qplay" type="button" aria-label="播放發音">${SPK}</button><p class="qsub" style="text-align:center">聽發音，拼出這個字</p>${boxes}<p class="qlen">${letters} 個字母</p>${submit}`;
+  } else {
+    const s0 = w.ex[0], sent = esc(s0.slice(0, z.at)) + '<span class="blank" id="qblank" aria-label="空格"></span>' + esc(s0.slice(z.at + z.form.length)), diff = norm(z.form) !== norm(w.w);
+    body = `<p class="qsent" lang="en">${sent}</p><p class="qsub">${esc(w.ex[1])}</p><p class="qsub">提示：${esc(zh1(w))}${diff ? '　·　要照句子改成正確的詞形' : ''}</p>${boxes}${submit}`;
   }
-  root.innerHTML = head + `<div class="panel qcard">${meta}${body}<div id="qfb" hidden></div></div>`;
+  root.innerHTML = `<div class="qwrap">${top}<div class="qcard t-${c.type}">${meta}${body}</div></div>`;
 
   const finish = (ok, given) => {
+    const wasFam = isFam(e), bx = $('#boxes');
+    q.ok = (q.ok || 0) + (ok ? 1 : 0); q.streak = ok ? (q.streak || 0) + 1 : 0;
+    const demote = !ok && e.done.length > 0;
     answerQ(ok);
-    const z = c.type === 'cloze' ? clozeOf(w) : null, ans = z ? z.form : w.w;
-    root.querySelectorAll('input,.opt,#qform button,#qskip').forEach(el => el.disabled = true);
-    const fb = $('#qfb'); fb.hidden = false; fb.className = 'fb' + (ok ? '' : ' bad');
-    fb.innerHTML = `${ok ? '答對了' : (given ? `你填的是「${esc(given)}」，正確是` : '答案是')}　<b lang="en">${esc(ans)}</b><div class="muted">${esc(w.pos)}　${esc(zh1(w))}${!ok && e.done.length ? '　·　這個字退一級，幾題後會再出現' : ''}</div>
-      <div class="qacts" style="margin-top:10px"><button class="btn" id="qnext" type="button">下一題</button><button class="chip" type="button" data-say="${esc(w.w)}">聽發音</button></div>`;
-    fb.querySelector('[data-say]').onclick = ev => speak(w.w, ev.currentTarget);
-    speak(w.w); const nx = $('#qnext'); nx.onclick = () => renderQuiz(); nx.focus();
-    const [nf, nt] = quizCount(); root.querySelector('.qcount').innerHTML = `<b>${nf}</b> / ${nt} 熟悉`;
-    root.querySelector('.meter i').style.transform = `scaleX(${nt ? nf / nt : 0})`;
+    const newFam = ok && !wasFam && isFam(e);
+    try { navigator.vibrate?.(ok ? 10 : [30, 40, 30]); } catch {}
+    root.querySelectorAll('.opt,#qans,#qgo,#qskip').forEach(el => el.disabled = true);
+    if (bx) {
+      bx.classList.remove('focus'); bx.classList.add(ok ? 'ok' : 'bad');
+      const cs = [...ans].filter(ch => /[a-z]/i.test(ch));
+      bx.querySelectorAll('.bx').forEach((b, i) => { b.style.setProperty('--i', i); if (!ok) b.textContent = cs[i]; });
+    }
+    const bl = $('#qblank'); if (bl) { bl.className = 'blank fill' + (ok ? '' : ' bad'); bl.textContent = ans; }
+    const foot = $('#qfoot');
+    foot.innerHTML = `<div class="qfb ${ok ? 'ok' : 'bad'}" role="status"><div class="qfb-h">${ok ? CHECK + '答對了' : CROSS + (given ? '你填的是「' + esc(given) + '」' : '答案是')}</div>
+      <div class="qfb-a" lang="en">${esc(ans)}</div><div class="qfb-s">${esc(w.pos)}　${esc(zh1(w))}</div>
+      ${newFam ? '<span class="qfb-fam">這個字熟悉了</span>' : ''}${demote ? '<div class="qfb-n">退一級，幾題後會再出現</div>' : ''}
+      <div class="qfb-acts"><button class="btn big" id="qnext" type="button">繼續</button><button class="qsay" type="button" id="qsay" aria-label="聽發音">${SPK}</button></div></div>`;
+    $('#qsay').onclick = ev => speak(w.w, ev.currentTarget);
+    speak(w.w); const nx = $('#qnext'); nx.onclick = () => renderQuiz(); nx.focus({ preventScroll: true });
+    foot.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    const [nf, nt] = quizCount(); $('#qcount').innerHTML = `<b>${nf}</b>/${nt}`; $('#qbar').style.transform = `scaleX(${nt ? nf / nt : 0})`;
+    $('#qstreak').innerHTML = q.streak >= 3 ? `<span class="qstreak">連對 ${q.streak}</span>` : '';
+    ringsSet($('#hdRings'), ringFractions());
   };
   if (c.type === 'choose') root.querySelectorAll('.opt').forEach(b => b.onclick = () => {
     const ok = b.dataset.o === c.id; b.classList.add(ok ? 'right' : 'wrong');
-    if (!ok) root.querySelector(`.opt[data-o="${c.id}"]`).classList.add('right'); finish(ok); });
-  const form = $('#qform');
-  if (form) {
-    const inp = $('#qans');
-    form.onsubmit = ev => { ev.preventDefault(); const v = inp.value; if (!norm(v)) { inp.focus(); return; }
-      const want = c.type === 'cloze' ? clozeOf(w).form : w.w; finish(norm(v) === norm(want), v.trim()); };
+    if (!ok) root.querySelector(`.opt[data-o="${c.id}"]`).classList.add('right');
+    finish(ok);
+  });
+  const inp = $('#qans');
+  if (inp) {
+    const bxs = [...root.querySelectorAll('.bx')], boxEl = $('#boxes'), go = $('#qgo');
+    const paint = () => {
+      const v = inp.value.replace(/[^a-z]/gi, '').slice(0, bxs.length);
+      bxs.forEach((b, i) => { b.textContent = v[i] || ''; b.classList.toggle('has', !!v[i]); b.classList.toggle('cur', i === v.length); });
+      go.disabled = !v.length; return v;
+    };
+    inp.addEventListener('input', paint);
+    inp.addEventListener('focus', () => boxEl.classList.add('focus'));
+    inp.addEventListener('blur', () => boxEl.classList.remove('focus'));
+    const submitAns = () => { const v = paint(); if (!v) return; finish(v.toLowerCase() === ans.replace(/[^a-z]/gi, '').toLowerCase(), v); };
+    go.onclick = submitAns;
+    inp.addEventListener('keydown', ev => { if (ev.key === 'Enter') { ev.preventDefault(); submitAns(); } });
     $('#qskip').onclick = () => finish(false, '');
-    if (c.type !== 'listen') setTimeout(() => inp.focus({ preventScroll: true }), 60);
+    paint();
+    if (c.type !== 'listen') setTimeout(() => inp.focus({ preventScroll: true }), 80);
   }
-  if (c.type === 'listen') { const p = $('#qplay'); p.onclick = () => { speak(w.w, p); $('#qans').focus(); }; speak(w.w, p); }
+  if (c.type === 'listen') {
+    const p = $('#qplay');
+    const play = () => { p.classList.add('playing'); speak(w.w, null); setTimeout(() => p.classList.remove('playing'), 1800); inp.focus({ preventScroll: true }); };
+    p.onclick = play; setTimeout(play, 250);
+  }
 }
 
 /* ---------- views ---------- */
