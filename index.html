@@ -549,6 +549,27 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('#sheet
 })();
 $('#sheetBody').addEventListener('click', e => { const b = e.target.closest('[data-say]'); if (b) speak(b.dataset.say, b.querySelector('em') || b); });
 
+/* DEV-START 測試用按鈕：正式版把 DEV 改成 false，或刪掉 DEV-START 到 DEV-END 之間 */
+const DEV = true;
+const devHTML = () => !DEV ? '' : `<div class="sec"><span class="lbl">測試用（正式版會拿掉）</span>
+  <div class="voice" style="flex-wrap:wrap"><button class="chip" id="devSkip" type="button">跳過第 1 輪</button><button class="chip" id="devReset" type="button" style="color:var(--no)">重置全部進度</button></div></div>`;
+function devBind(){
+  if (!DEV) return;
+  const skip = $('#devSkip'), reset = $('#devReset'); if (!skip) return;
+  skip.onclick = () => {
+    state.known = state.unitIds.slice(); state.deck = []; state.roundDone = true; state.r1done[state.unit] = true; lastSnap = null; flipped = false;
+    state.unitIds.forEach(id => { const s = state.stats[id] ||= { L:0, R:0 }; s.R = Math.max(s.R, 1); });
+    save(); closeSheet(); renderCards(0); toast('已跳過第 1 輪，測驗開放');
+  };
+  let armed = 0;
+  reset.onclick = () => {
+    if (!armed) { armed = 1; reset.textContent = '再按一次確認重置'; setTimeout(() => { armed = 0; reset.textContent = '重置全部進度'; }, 4000); return; }
+    const keep = lget(THEME_KEY), vk = lget(VOICE_KEY);
+    state = normalize(fresh()); state.updatedAt = Date.now(); lastSnap = null; flipped = false; if (keep) lset(THEME_KEY, keep); if (vk) lset(VOICE_KEY, vk);
+    save(); closeSheet(); setView('cards'); renderCards(0); toast('已重置，從 Unit 1 重新開始');
+  };
+}
+/* DEV-END */
 const li = (word, zh, note, html) => `<button class="li" data-say="${esc(word)}" aria-label="${esc(word)}，${esc(zh)}，播放發音"><i lang="en">${html || esc(word)}</i><span>${esc(zh)}${note ? `<small>${esc(note)}</small>` : ''}</span><em aria-hidden="true">${SPK}</em></button>`;
 function markEx(s, word){ const stem = (word.length > 4 ? word.slice(0, -1) : word).replace(/[^a-z]/gi, ''); return esc(s).replace(new RegExp('\\b(' + stem + '\\w*)', 'i'), '<mark>$1</mark>'); }
 function familyHTML(w){
@@ -586,6 +607,7 @@ function openStats(){
       <div class="tile"><b>${Object.keys(state.mem).filter(isLong).length}</b><span>長期記憶（5 次熟悉、相隔 60 天以上）</span></div>
       <div class="tile"><b>${state.unit + 1} / ${state.unitCount}</b><span>單元（目前整理了 ${WORDS.length} 字）</span></div></div>
     <div class="sec"><span class="lbl">最常滑「不熟」的字</span>${worst.length ? worst.map(([i, s]) => li(BY[i].w, BY[i].zh.split(/[；;]/)[0], `不熟 ${s.L} 次 · 熟悉 ${s.R} 次`)).join('') : '<p class="muted">還沒有。左滑過的字會列在這裡。</p>'}</div>
+    ${devHTML()}
     <div class="sec"><span class="lbl">設定</span>
       <div class="setting"><span>外觀</span><div class="seg" role="group" aria-label="外觀">${[['auto','自動'],['light','淺色'],['dark','深色']].map(([v, n]) => `<button type="button" data-theme-set="${v}" aria-pressed="${th === v}">${n}</button>`).join('')}</div></div>
       <div class="setting" style="flex-direction:column;align-items:stretch;gap:8px"><span>發音聲音</span>${vs.length
@@ -598,6 +620,7 @@ function openStats(){
         <input id="bkLoad" type="file" accept="application/json,.json" class="sr"></div></div></div>`;
   openSheet('進度', html, () => {
     const svg = $('#bigRings'); ringsInit(svg); requestAnimationFrame(() => requestAnimationFrame(() => ringsSet(svg, ringFractions())));
+    devBind();
     $('#sheetBody').querySelectorAll('[data-theme-set]').forEach(b => b.onclick = () => {
       const v = b.dataset.themeSet; lset(THEME_KEY, v); applyTheme(v);
       $('#sheetBody').querySelectorAll('[data-theme-set]').forEach(x => x.setAttribute('aria-pressed', x === b)); });
