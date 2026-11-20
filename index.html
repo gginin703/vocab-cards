@@ -301,6 +301,32 @@ u{text-decoration:none;color:var(--root);font-weight:800}
 .qstats div{background:var(--s2);border-radius:16px;padding:10px}
 .qstats b{display:block;font-size:24px;font-weight:800;font-variant-numeric:tabular-nums}
 .qstats span{font-size:12px;color:var(--t3)}
+.art{display:flex;flex-direction:column;gap:14px;animation:viewin .35s var(--ease-out) both}
+.art-top{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.art-top .tag{margin:0}
+.art-h,.art-p,.art-sub,.wc-top b,.qsent{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif}
+.art-h{margin:2px 0 0;font-size:clamp(26px,7.5vw,32px);line-height:1.2;letter-spacing:-.5px;font-weight:800;text-wrap:balance}
+.art-hint{margin:0;color:var(--t3);font-size:13px}
+.art-body{display:flex;flex-direction:column;gap:16px;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
+.art-p{margin:0;font-size:19px;line-height:1.85;color:var(--t1)}
+.art-sub{margin:10px 0 0;font-size:22px;line-height:1.3;font-weight:800}
+.aw{border-radius:4px;transition:background .15s}
+.aw.k{text-decoration:underline dotted;text-decoration-color:var(--r3);text-decoration-thickness:2px;text-underline-offset:5px}
+.aw.press{background:color-mix(in srgb,var(--r3) 28%,transparent)}
+.art-src{margin:0;color:var(--t3);font-size:13px;line-height:1.6}
+.art-src a{color:var(--r3);font-weight:700}
+.opt.long{font-size:18px;line-height:1.4;min-height:64px;font-weight:600}
+.art-cta{display:flex;flex-direction:column;gap:6px}
+#wordCard{position:fixed;left:50%;bottom:calc(86px + env(safe-area-inset-bottom,0px));transform:translate(-50%,24px);opacity:0;z-index:25;width:calc(100% - 32px);max-width:488px;background:var(--s1);border:1px solid var(--ln);border-radius:22px;box-shadow:var(--sheet-shadow),var(--card-shadow);padding:14px 16px;transition:opacity .25s,transform .45s var(--ease-ios)}
+#wordCard.on{opacity:1;transform:translate(-50%,0)}
+.wc-top{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.wc-top b{font-size:24px;font-weight:800;letter-spacing:-.4px}
+.wc-base{font-size:12px;color:var(--t3);font-weight:700}
+.wc-top .speak{margin-left:auto}
+.wc-ipa{color:var(--t3);font-size:14px;margin-top:2px}
+.wc-zh{font-size:19px;font-weight:800;margin-top:6px;line-height:1.4}
+.wc-en{color:var(--t2);font-size:14px;margin-top:4px;line-height:1.5}
+.wc-link{display:inline-block;margin-top:8px;color:var(--r3);font-weight:700;font-size:15px;min-height:36px}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
 </style>
 </head>
@@ -338,6 +364,7 @@ u{text-decoration:none;color:var(--root);font-weight:800}
   <div class="sh-h"><h2 id="sheetTitle"></h2><button class="text-btn" id="sheetClose">完成</button></div>
   <div class="sh-body" id="sheetBody"></div>
 </section>
+<div id="wordCard" hidden></div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script>
@@ -396,7 +423,7 @@ function planUnits(){
   return units;
 }
 function fresh(){ const u = planUnits(); return { v:1, unit:0, unitIds:u[0], unitCount:u.length, round:1, deck:shuffle(u[0]), known:[], roundDone:false, r1done:{}, stats:{}, days:[], updatedAt:0 }; }
-function normalize(s){ s.days ||= []; s.stats ||= {}; s.r1done ||= {}; s.wstat ||= {}; s.mem ||= {}; return s; }
+function normalize(s){ s.art ||= { done: {} }; s.days ||= []; s.stats ||= {}; s.r1done ||= {}; s.wstat ||= {}; s.mem ||= {}; return s; }
 const today = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; };
 function streak(){
   const set = new Set(state.days); let n = 0; const d = new Date();
@@ -880,15 +907,133 @@ function renderQuiz(){
   }
 }
 
+/* ---------- articles ---------- */
+let ART = null, artId = null, artMode = 'read', artQ = null, WMAP = null, wordCardTimer = null;
+function wmap(){ if (WMAP) return WMAP; WMAP = {}; WORDS.forEach(w => { WMAP[w.w.toLowerCase()] = w; }); return WMAP; }
+function lookup(raw){
+  const m = wmap(), w = raw.toLowerCase().replace(/’/g, "'").replace(/^-+|-+$/g, '');
+  if (m[w]) return m[w];
+  const c = [];
+  if (w.endsWith("'s")) c.push(w.slice(0, -2));
+  if (w.endsWith('ies')) c.push(w.slice(0, -3) + 'y');
+  if (w.endsWith('ied')) c.push(w.slice(0, -3) + 'y');
+  if (w.endsWith('es')) c.push(w.slice(0, -2));
+  if (w.endsWith('s')) c.push(w.slice(0, -1));
+  if (w.endsWith('ed')) { c.push(w.slice(0, -2), w.slice(0, -1)); if (w.length > 5 && w[w.length - 3] === w[w.length - 4]) c.push(w.slice(0, -3)); }
+  if (w.endsWith('ing')) { c.push(w.slice(0, -3), w.slice(0, -3) + 'e'); if (w.length > 6 && w[w.length - 4] === w[w.length - 5]) c.push(w.slice(0, -4)); }
+  if (w.endsWith('ly')) c.push(w.slice(0, -2));
+  if (w.endsWith('ally')) c.push(w.slice(0, -4) + 'al');
+  for (const x of c) if (x.length > 2 && m[x]) return m[x];
+  return null;
+}
+function artParaHTML(text){
+  let out = '', last = 0; const re = /[A-Za-z][A-Za-z'’-]*/g; let m;
+  while ((m = re.exec(text))) {
+    out += esc(text.slice(last, m.index)); last = m.index + m[0].length;
+    out += `<span class="aw${lookup(m[0]) ? ' k' : ''}" data-w="${esc(m[0])}">${esc(m[0])}</span>`;
+  }
+  return out + esc(text.slice(last));
+}
+function showWordCard(raw){
+  const hit = lookup(raw), card = $('#wordCard'); clearTimeout(wordCardTimer);
+  const base = raw.replace(/[’']s$/i, '');
+  card.innerHTML = hit
+    ? `<div class="wc-top"><b lang="en">${esc(raw)}</b>${hit.w.toLowerCase() !== raw.toLowerCase() ? `<span class="wc-base">原形 ${esc(hit.w)}</span>` : ''}<span class="lv">${esc(hit.lv)}</span><button class="speak" data-say="${esc(hit.w)}" aria-label="播放發音">${SPK}</button></div>
+       <div class="wc-ipa">${esc(hit.pos)}　/${esc(hit.ipa)}/</div><div class="wc-zh">${esc(hit.zh)}</div><div class="wc-en" lang="en">${esc(hit.en)}</div>`
+    : `<div class="wc-top"><b lang="en">${esc(raw)}</b><button class="speak" data-say="${esc(raw)}" aria-label="播放發音">${SPK}</button></div>
+       <div class="wc-zh" style="font-size:15px;font-weight:600;color:var(--t2)">這個字不在你的單字書裡</div>
+       <a class="wc-link" href="https://dictionary.cambridge.org/dictionary/english-chinese-traditional/${encodeURIComponent(base.toLowerCase())}" target="_blank" rel="noopener">查劍橋字典 ›</a>`;
+  card.hidden = false; requestAnimationFrame(() => card.classList.add('on'));
+  card.querySelector('[data-say]').onclick = ev => speak(ev.currentTarget.dataset.say, ev.currentTarget);
+  speak(hit ? hit.w : raw);
+}
+function hideWordCard(){ const c = $('#wordCard'); if (!c || c.hidden) return; c.classList.remove('on'); setTimeout(() => { c.hidden = true; }, 250); }
+function bindArticleWords(root){
+  let timer = null, long = false, down = null;
+  const clear = () => { clearTimeout(timer); timer = null; root.querySelectorAll('.aw.press').forEach(e => e.classList.remove('press')); };
+  root.addEventListener('pointerdown', e => {
+    const el = e.target.closest('.aw'); if (!el) { hideWordCard(); return; }
+    long = false; down = { x: e.clientX, y: e.clientY }; el.classList.add('press');
+    timer = setTimeout(() => { long = true; try { navigator.vibrate?.(8); } catch {} showWordCard(el.dataset.w); }, 380);
+  });
+  root.addEventListener('pointermove', e => { if (down && Math.hypot(e.clientX - down.x, e.clientY - down.y) > 8) clear(); });
+  root.addEventListener('pointerup', e => {
+    const el = e.target.closest('.aw'); const was = timer !== null; clear();
+    if (el && was && !long && el.classList.contains('k')) showWordCard(el.dataset.w);
+  });
+  root.addEventListener('pointercancel', clear); root.addEventListener('contextmenu', e => e.preventDefault());
+  root.addEventListener('scroll', hideWordCard, { passive: true });
+}
+const artToday = () => { const n = ART.length, d = Math.floor((Date.now() - new Date(2026, 10, 20).getTime()) / DAY); return ART[((d % n) + n) % n].id; };
+async function renderArticle(){
+  const root = $('#artRoot'); if (!root) return;
+  if (!ART) {
+    root.innerHTML = '<p class="muted">載入文章中…</p>';
+    try { const r = await fetch('articles.json'); if (!r.ok) throw 0; ART = (await r.json()).articles; }
+    catch { root.innerHTML = '<div class="panel"><h3>文章載入失敗</h3><p>請連上網路後重新打開。</p></div>'; return; }
+  }
+  if (!artId || !ART.find(x => x.id === artId)) artId = artToday();
+  const a = ART.find(x => x.id === artId), done = (state.art ||= { done: {} }).done[a.id];
+  if (artMode === 'quiz') return renderArticleQuiz(a);
+  const mins = Math.max(1, Math.round(a.words / 200)), isToday = a.id === artToday();
+  const body = a.paras.map(p => p.k === 'h' ? `<h3 class="art-sub">${esc(p.t)}</h3>` : `<p class="art-p" lang="en">${artParaHTML(p.t)}</p>`).join('');
+  const others = ART.filter(x => x.id !== a.id).map(x => { const d = state.art.done[x.id]; return `<button class="li" data-art="${x.id}"><i style="font-family:inherit;font-weight:700;font-size:15px;min-width:0" lang="en">${esc(x.title)}</i><span style="flex:0 0 auto">${d ? d.s + '/' + d.n : ''}</span></button>`; }).join('');
+  root.innerHTML = `<div class="art">
+    <div class="art-top"><span class="tag">${isToday ? '今日文章' : '文章'}</span><span class="muted" style="margin:0">${esc(a.source)} · ${a.words} 字 · 約 ${mins} 分鐘</span></div>
+    <h2 class="art-h" lang="en">${esc(a.title)}</h2>
+    <p class="art-hint">有底線的字點一下看意思，任何字長按都能查。</p>
+    <div class="art-body" id="artBody">${body}</div>
+    <p class="art-src">出處：${esc(a.source)}（${esc(a.license)}）　<a href="${esc(a.url)}" target="_blank" rel="noopener">原文連結 ›</a></p>
+    <div class="panel art-cta"><h3>${done ? '上次答對 ' + done.s + ' / ' + done.n : '讀完了？來做 ' + a.qa.length + ' 題'}</h3><p>托福和雅思題型混合。做完題目才會顯示片語和難字整理。</p>
+      <button class="btn big" id="artStart">${done ? '再做一次' : '開始做題'}</button></div>
+    ${done ? vocabHTML(a) : ''}
+    <div class="sec"><span class="lbl">其他文章</span>${others}</div></div>`;
+  bindArticleWords($('#artBody'));
+  $('#artStart').onclick = () => { artMode = 'quiz'; artQ = { i: 0, s: 0, ans: [] }; renderArticle(); $('.page')?.scrollTo?.(0, 0); };
+  root.querySelectorAll('[data-art]').forEach(b => b.onclick = () => { artId = b.dataset.art; artMode = 'read'; renderArticle(); $('.page')?.scrollTo?.(0, 0); });
+  root.querySelectorAll('[data-say]').forEach(b => b.onclick = () => speak(b.dataset.say));
+}
+function vocabHTML(a){
+  return `<div class="sec"><span class="lbl">片語與難字</span>${a.vocab.map(v => `<button class="li" data-say="${esc(v.w)}" aria-label="${esc(v.w)}，${esc(v.zh)}"><i lang="en">${esc(v.w)}</i><span>${esc(v.zh)}<small lang="en">${esc(v.n)}</small></span><em aria-hidden="true">${SPK}</em></button>`).join('')}</div>`;
+}
+function renderArticleQuiz(a){
+  const root = $('#artRoot'), i = artQ.i, n = a.qa.length;
+  const CHECK = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7"/></svg>', CROSS = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>';
+  if (i >= n) {
+    state.art.done[a.id] = { s: artQ.s, n, t: Date.now() }; if (!state.days.includes(today())) state.days.push(today()); save();
+    root.innerHTML = `<div class="qwrap"><div class="panel qdone"><svg class="rings" id="artRings" width="130" height="130"></svg><h3>答對 ${artQ.s} / ${n}</h3><p>${artQ.s === n ? '全對' : artQ.s >= n * .7 ? '很不錯' : '再讀一次文章會更好'}</p>
+      <button class="btn big" id="artBack">看片語與難字整理</button></div></div>`;
+    const sv = $('#artRings'); ringsInit(sv); requestAnimationFrame(() => requestAnimationFrame(() => ringsSet(sv, [artQ.s / n, 0, 0])));
+    $('#artBack').onclick = () => { artMode = 'read'; renderArticle().then(() => { const v = document.querySelector('.art-cta'); v?.scrollIntoView?.({ behavior: 'smooth', block: 'start' }); }); }; return;
+  }
+  const q = a.qa[i];
+  const opts = q.t === 'mc' ? q.o.map((o, k) => `<button class="opt long" type="button" data-k="${k}" lang="en"><span class="k">${'ABCD'[k]}</span><span>${esc(o)}</span></button>`).join('')
+    : [['T', 'True', '文中有寫，而且對'], ['F', 'False', '文中有寫，但不對'], ['NG', 'Not Given', '文中沒提到']].map(([k, e, z]) => `<button class="opt long" type="button" data-k="${k}"><span class="k">${k === 'NG' ? '?' : k}</span><span><span lang="en">${e}</span><small style="display:block;font-size:13px;font-weight:600;color:var(--t3)">${z}</small></span></button>`).join('');
+  root.innerHTML = `<div class="qwrap"><div class="qtop"><button class="qlink" id="artExit" style="min-height:36px;padding:0">‹ 回文章</button><div class="qprog"><div class="qbar" aria-hidden="true"><i style="transform:scaleX(${i / n})"></i></div><span class="qcount"><b>${i + 1}</b>/${n}</span></div></div>
+    <div class="qcard t-${q.t === 'mc' ? 'choose' : 'cloze'}"><div class="qmeta"><span class="qbadge">${q.t === 'mc' ? '選擇題' : 'True / False / Not Given'}</span></div>
+    <p class="qsent" lang="en" style="font-weight:700">${esc(q.q)}</p><div class="opts">${opts}</div><div class="qfoot" id="qfoot"></div></div></div>`;
+  $('#artExit').onclick = () => { artMode = 'read'; renderArticle(); };
+  root.querySelectorAll('.opt').forEach(b => b.onclick = () => {
+    const k = q.t === 'mc' ? +b.dataset.k : b.dataset.k, ok = k === q.a; if (ok) artQ.s++;
+    root.querySelectorAll('.opt').forEach(x => { x.disabled = true; if ((q.t === 'mc' ? +x.dataset.k : x.dataset.k) === q.a) x.classList.add('right'); });
+    if (!ok) b.classList.add('wrong'); try { navigator.vibrate?.(ok ? 10 : [30, 40, 30]); } catch {}
+    const foot = $('#qfoot'); foot.innerHTML = `<div class="qfb ${ok ? 'ok' : 'bad'}" role="status"><div class="qfb-h">${ok ? CHECK + '答對了' : CROSS + '答錯了'}</div><div class="qfb-s" lang="en" style="font-size:15px">${esc(q.why)}</div>
+      <div class="qfb-acts"><button class="btn big" id="artNext" type="button">${i + 1 >= n ? '看結果' : '下一題'}</button></div></div>`;
+    $('#artNext').onclick = () => { artQ.i++; renderArticle(); }; $('#artNext').focus({ preventScroll: true });
+    foot.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  });
+}
+
 /* ---------- views ---------- */
 const VIEWS = ['cards', 'article', 'podcast', 'quiz'];
 function setView(v){
+  hideWordCard();
   view = v; VIEWS.forEach(n => { const b = $('#t-' + n); b.setAttribute('aria-selected', n === v); });
   $('#v-cards').hidden = v !== 'cards'; const o = $('#v-other'); o.hidden = v === 'cards';
   if (v === 'cards') { $('#v-cards').style.animation = 'none'; void $('#v-cards').offsetWidth; $('#v-cards').style.animation = ''; return; }
   const t = state.unitIds.length, k = state.round === 1 && !state.roundDone ? state.known.length : t, ok = !!state.r1done[state.unit];
   const pages = {
-    article: `<h2>每日文章</h2><div class="panel"><span class="tag">每天早上 6 點換新</span><h3>托福、雅思長度的真實文章</h3><p>來源輪流用 VOA、The Conversation、ProPublica 和 TED 逐字稿，另附 1–2 則 BBC、CNN 連結當延伸閱讀。</p><p>每篇 6–8 題，托福和雅思題型混合。長按任何字看意思，做完題目才打開片語和難字整理。</p></div><p class="muted">每日更新程式在另一台電腦裝好後，這裡就會有當天的文章。</p>`,
+    article: `<div id="artRoot"></div>`,
     podcast: `<h2>聽力</h2><div class="panel"><span class="tag">每天早上 6 點換新</span><h3>VOA Learning English／TED Talks Daily</h3><p>每天一集 5–15 分鐘。字幕逐句跟著聲音亮起，點任何一句可以跳過去或單句重播，可以調成 0.75、0.9 倍速。</p><p>每集開始選輔助模式（有字幕）或挑戰模式（先盲聽再做題），兩種成績分開統計。</p></div><p class="muted">每日更新程式在另一台電腦裝好後，這裡就會有當天的節目。</p>`,
     quiz: ok
       ? `<div id="quizRoot"></div>`
@@ -896,6 +1041,7 @@ function setView(v){
   };
   o.innerHTML = `<div class="page">${pages[v]}</div>`;
   if (v === 'quiz' && ok) renderQuiz();
+  if (v === 'article') renderArticle();
   o.style.animation = 'none'; void o.offsetWidth; o.style.animation = '';
   const qm = $('#qm'); if (qm) requestAnimationFrame(() => requestAnimationFrame(() => qm.style.transform = `scaleX(${k / t})`));
 }
