@@ -334,6 +334,15 @@ u{text-decoration:none;color:var(--root);font-weight:800}
 .art-sub::before{content:"";flex:0 0 5px;align-self:stretch;border-radius:3px;background:var(--r3)}
 .tk-frame{position:relative;width:100%;aspect-ratio:16/9;border-radius:14px;overflow:hidden;background:#000;margin:4px 0 8px}
 .tk-frame iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+.tk-dock{position:sticky;top:0;z-index:5;background:var(--k);padding:4px 0 8px;margin:0 0 6px}
+.tk-now{min-height:3.2em;font-size:17px;line-height:1.5;padding:8px 12px;border-radius:12px;background:var(--s1);border:1px solid var(--ln);margin:6px 0}
+.tk-ctl{display:flex;gap:6px;flex-wrap:wrap}
+.tk-ctl button{flex:1 1 auto;min-height:40px;border-radius:10px;border:1px solid var(--ln);background:var(--s1);color:var(--t1);font:inherit;font-size:14px;padding:6px 8px;cursor:pointer}
+.tk-ctl button[aria-pressed="true"]{background:var(--r3);color:#fff;border-color:var(--r3)}
+.tk-sync{display:flex;gap:6px;flex-wrap:wrap;align-items:center;font-size:13px;color:var(--t3);margin:0 0 12px}
+.tk-sync .muted{margin:0}
+.cue{border-radius:6px;transition:background .2s;cursor:pointer}
+.cue.on{background:color-mix(in srgb,var(--r3) 18%,transparent);box-shadow:0 0 0 2px color-mix(in srgb,var(--r3) 18%,transparent)}
 .tk-note{font-size:13px;color:var(--t3);margin:0 0 14px;line-height:1.6}
 .tk-note a{color:var(--r3)}
 .tk-tools{margin-bottom:10px}
@@ -430,7 +439,7 @@ const quoteToday = () => {
   return d % 2 === 0 ? at(QUOTES, d / 2) : at(BIBLE, (d - 1) / 2);
 };
 const quoteCardHTML = () => { const q = quoteToday(); return `<div class="sec qcard2"><span class="lbl">${BIBLE.includes(q) ? '今日經文' : '今日佳句'}</span><button class="qt" type="button" data-say="${esc(q.q)}" aria-label="聽這句話的發音"><span class="qt-mark" aria-hidden="true">“</span><span class="qt-en" lang="en">${esc(q.q)}</span></button><p class="qt-zh">${esc(q.zh)}</p><div class="qt-by">— ${esc(q.a)}${q.s ? `<span>${esc(q.s)}</span>` : ''}</div></div>`; };
-const BUILD = 'a484aff8ed';
+const BUILD = '6ed0b8f694';
 const UNIT_SIZE = 50, REINSERT = 5, STATE_KEY = 'vocab-state-v1', THEME_KEY = 'vocab-theme', VOICE_KEY = 'vocab-voice';
 const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const $ = s => document.querySelector(s);
@@ -760,7 +769,7 @@ function openStats(){
       <div class="tile"><b>${state.unit + 1} / ${state.unitCount}</b><span>單元（目前整理了 ${WORDS.length} 字）</span></div></div>
     <div class="sec"><span class="lbl">最常滑「不熟」的字</span>${worst.length ? worst.map(([i, s]) => li(BY[i].w, BY[i].zh.split(/[；;]/)[0], `不熟 ${s.L} 次 · 熟悉 ${s.R} 次`)).join('') : '<p class="muted">還沒有。左滑過的字會列在這裡。</p>'}</div>
     ${devHTML()}
-    <p class="muted" style="text-align:center">版本 ${BUILD === 'a484aff8ed' ? 'claude.ai' : BUILD}</p>
+    <p class="muted" style="text-align:center">版本 ${BUILD === '6ed0b8f694' ? 'claude.ai' : BUILD}</p>
     <div class="sec"><span class="lbl">設定</span>
       <div class="setting"><span>每日佳句</span><div class="seg" role="group" aria-label="每日佳句內容">${[['all','輪流'],['q','名言'],['b','聖經']].map(([v, n]) => `<button type="button" data-quote-set="${v}" aria-pressed="${quoteMode() === v}">${n}</button>`).join('')}</div></div>
       <div class="setting"><span>外觀</span><div class="seg" role="group" aria-label="外觀">${[['auto','自動'],['light','淺色'],['dark','深色']].map(([v, n]) => `<button type="button" data-theme-set="${v}" aria-pressed="${th === v}">${n}</button>`).join('')}</div></div>
@@ -1205,7 +1214,11 @@ async function renderTalks(){
   const t = TALKS.find(x => x.id === talkId), tk = (state.tk ||= { done: {} }), isToday = t.id === tkToday(), fs = artFs();
   const [pace, paceCls] = tkPace(t.wpm);
   artKnown = new Set();
-  const body = t.paras.map(p => `<p class="art-p" lang="en">${artParaHTML(p)}</p>`).join('');
+  const sync = !!(t.yt && t.cues), off = (tk.off ||= {})[t.id] ?? null;
+  let ci = 0;
+  const body = sync
+    ? t.cues.map(g => `<p class="art-p" lang="en">${g.map(c => `<span class="cue" data-ci="${ci++}">${artParaHTML(c[1])}</span>`).join(' ')}</p>`).join('')
+    : t.paras.map(p => `<p class="art-p" lang="en">${artParaHTML(p)}</p>`).join('');
   const known = [...artKnown].map(id => BY[id]).filter(Boolean);
   const rest = TALKS.filter(x => x.id !== t.id).sort((a, b) => (tk.done[a.id] ? 1 : 0) - (tk.done[b.id] ? 1 : 0) || a.dur - b.dur), shown = talkAll ? rest : rest.slice(0, 5);
   const others = shown.map(x => `<button class="art-o" data-tk="${x.id}"><b lang="en">${esc(x.title)}</b><small><span>${esc(x.speaker)} · ${tkMin(x.dur)} 分鐘 · 語速${tkPace(x.wpm)[0]}</span>${tk.done[x.id] ? '<span class="dn">看過了</span>' : ''}</small></button>`).join('');
@@ -1213,11 +1226,20 @@ async function renderTalks(){
     <header class="art-hero src-ted"><div class="art-badges"><span class="art-src-chip">TED</span>${isToday ? '<span class="tag">今日影片</span>' : ''}</div>
       <h2 class="art-h" lang="en">${esc(t.title)}</h2>
       <div class="art-meta"><span lang="en">${esc(t.speaker)}</span><span>${tkMin(t.dur)} 分鐘</span><span class="pace ${paceCls}">語速${pace}（每分鐘 ${t.wpm} 字）</span></div></header>
-    <div class="tk-frame"><iframe src="${esc(t.embed)}?language=en" title="${esc(t.title)}" allow="autoplay; fullscreen; encrypted-media; picture-in-picture" allowfullscreen loading="lazy"></iframe></div>
-    <p class="tk-note">字幕請在播放器右下角的「CC」打開，可以選英文或中文。播不出來的話，<a href="${esc(t.url)}" target="_blank" rel="noopener">到 TED 網站看 ›</a></p>
+    ${sync ? `<div class="tk-dock" id="tkDock"><div class="tk-frame"><div id="ytBox"></div></div>
+      <div class="tk-now" id="tkNow" lang="en"><span class="muted">按播放後，這裡會顯示目前這一句</span></div>
+      <div class="tk-ctl" role="group" aria-label="播放控制">
+        <button type="button" id="tkPrev" aria-label="上一句">⏮</button>
+        <button type="button" id="tkRep" aria-label="重播這一句">↺ 這句</button>
+        <button type="button" id="tkLoop" aria-pressed="false">🔁 單句循環</button>
+        <button type="button" id="tkNext" aria-label="下一句">⏭</button>
+        <button type="button" id="tkRate">1×</button></div></div>
+      <div class="tk-sync"><span>字幕對不準？</span><button type="button" id="tkEarly" class="chip">字幕慢一點</button><button type="button" id="tkLate" class="chip">字幕快一點</button><button type="button" id="tkAlign" class="chip">聽到第一句時按這裡</button><span class="muted" id="tkOff"></span></div>`
+    : `<div class="tk-frame"><iframe src="${esc(t.embed)}?language=en" title="${esc(t.title)}" allow="autoplay; fullscreen; encrypted-media; picture-in-picture" allowfullscreen loading="lazy"></iframe></div>
+    <p class="tk-note">這部沒有可同步的版本。字幕請在播放器右下角的「CC」打開，可以選英文或中文。播不出來的話，<a href="${esc(t.url)}" target="_blank" rel="noopener">到 TED 網站看 ›</a></p>`}
     <div class="art-tools tk-tools"><span class="art-hint">逐字稿：點有底線的字，或長按任何字查意思</span><div class="fsbtn" role="group" aria-label="字體大小"><button type="button" id="fsDown" aria-label="縮小字體">A−</button><button type="button" id="fsUp" aria-label="放大字體">A+</button></div></div>
     ${known.length ? `<div class="art-known"><h3>這部有 ${known.length} 個你的單字</h3><p>點一下看意思</p><div class="chips">${known.slice(0, 30).map(w => `<button class="chip" type="button" data-kw="${esc(w.w)}" lang="en">${esc(w.w)}</button>`).join('')}</div></div>` : ''}
-    <details class="tk-tr"${tk.open ? ' open' : ''}><summary>逐字稿（${t.words} 字）</summary><article class="art-body" id="artBody">${body}</article></details>
+    <details class="tk-tr"${sync || tk.open ? ' open' : ''}><summary>逐字稿（${t.words} 字）${sync ? '・點句子跳過去播' : ''}</summary><article class="art-body" id="artBody">${body}</article></details>
     <footer class="art-end"><span class="orn" aria-hidden="true">● ● ●</span><span>影片與逐字稿：TED（CC BY-NC-ND 4.0），僅供個人學習</span><a href="${esc(t.url)}" target="_blank" rel="noopener">TED 原始頁面 ›</a></footer>
     <div class="art-cta"><h3>${tk.done[t.id] ? '已標記看過' : '看完了嗎？'}</h3><p>標記後會排到清單最後面，下次先推沒看過的。</p>
       <button class="btn big" id="tkDone">${tk.done[t.id] ? '取消標記' : '標記為看過'}</button></div>
@@ -1231,6 +1253,58 @@ async function renderTalks(){
   root.querySelectorAll('[data-tk]').forEach(b => b.onclick = () => { talkId = b.dataset.tk; renderTalks(); $('.page')?.scrollTo?.(0, 0); });
   $('#tkMore')?.addEventListener('click', () => { talkAll = !talkAll; renderTalks(); });
   root.querySelectorAll('[data-kw]').forEach(b => b.onclick = () => showWordCard(b.dataset.kw));
+  if (sync) tkPlayer(t, off);
+}
+
+/* sentence-synced YouTube player (TED's official YouTube upload + TED's own cue times) */
+let tkTimer = null, ytApi = null;
+function loadYT(){
+  if (ytApi) return ytApi;
+  ytApi = new Promise((ok, no) => {
+    if (window.YT?.Player) return ok(window.YT);
+    const prev = window.onYouTubeIframeAPIReady; window.onYouTubeIframeAPIReady = () => { prev?.(); ok(window.YT); };
+    const s = document.createElement('script'); s.src = 'https://www.youtube.com/iframe_api'; s.onerror = () => { ytApi = null; no(); }; document.head.appendChild(s);
+    setTimeout(() => { if (!window.YT?.Player) { ytApi = null; no(); } }, 9000);
+  });
+  return ytApi;
+}
+function tkPlayer(t, off0){
+  clearInterval(tkTimer);
+  const flat = t.cues.flat(), starts = flat.map(c => c[0] / 1000), tk = state.tk;
+  let off = off0 ?? 0, cur = -1, loop = false, rate = 1, player = null;
+  const spans = [...document.querySelectorAll('#artBody .cue')], now = $('#tkNow'), offEl = $('#tkOff');
+  const showOff = () => { offEl.textContent = off ? `目前調整 ${off > 0 ? '+' : ''}${off.toFixed(1)} 秒` : ''; };
+  const saveOff = () => { tk.off[t.id] = Math.round(off * 10) / 10; save(); showOff(); };
+  const idxAt = s => { let i = -1; for (let k = 0; k < starts.length; k++) { if (starts[k] + off <= s + 0.05) i = k; else break; } return i; };
+  const seek = i => { if (!player || i < 0 || i >= starts.length) return; player.seekTo(Math.max(0, starts[i] + off), true); player.playVideo?.(); paint(i); };
+  const paint = i => {
+    if (i === cur) return; cur = i;
+    spans.forEach(s => s.classList.remove('on')); if (i < 0) return;
+    const sp = spans[i]; sp.classList.add('on'); now.innerHTML = artParaHTML(flat[i][1]); bindNow();
+    const pg = sp.closest('.page'); if (pg && !document.querySelector('#wordCard.on')) { const r = sp.getBoundingClientRect(), dock = $('#tkDock').getBoundingClientRect(); if (r.top < dock.bottom + 8 || r.bottom > innerHeight - 90) pg.scrollBy({ top: r.top - dock.bottom - 70, behavior: 'smooth' }); }
+  };
+  let nowBound = false; const bindNow = () => { if (!nowBound) { nowBound = true; bindArticleWords(now); } };
+  showOff();
+  $('#ytBox').innerHTML = '<p class="muted" style="color:#ccc;padding:16px">載入播放器中…</p>';
+  loadYT().then(YT => {
+    player = new YT.Player('ytBox', { videoId: t.yt, playerVars: { playsinline: 1, rel: 0, modestbranding: 1, cc_load_policy: 0 },
+      events: { onReady: () => { tkTimer = setInterval(() => {
+        if (!document.body.contains(spans[0] || document.body)) { clearInterval(tkTimer); return; }
+        const s = player.getCurrentTime?.() || 0, i = idxAt(s);
+        if (loop && cur >= 0 && i > cur) { player.seekTo(starts[cur] + off, true); return; }
+        paint(i);
+      }, 150); } } });
+  }).catch(() => { $('#ytBox').innerHTML = `<p style="color:#ccc;padding:16px">這裡載不到 YouTube 播放器。請改用手機上的 App，或 <a style="color:#9cf" href="https://www.youtube.com/watch?v=${esc(t.yt)}" target="_blank" rel="noopener">到 YouTube 看 ›</a></p>`; });
+  $('#tkPrev').onclick = () => seek(Math.max(0, cur - 1));
+  $('#tkNext').onclick = () => seek(Math.min(starts.length - 1, cur + 1));
+  $('#tkRep').onclick = () => seek(Math.max(0, cur));
+  $('#tkLoop').onclick = e => { loop = !loop; e.currentTarget.setAttribute('aria-pressed', loop); };
+  $('#tkRate').onclick = e => { rate = rate === 1 ? 0.75 : rate === 0.75 ? 0.5 : 1; player?.setPlaybackRate?.(rate); e.currentTarget.textContent = rate + '×'; };
+  $('#tkEarly').onclick = () => { off += 0.5; cur = -2; saveOff(); };
+  $('#tkLate').onclick = () => { off -= 0.5; cur = -2; saveOff(); };
+  $('#tkAlign').onclick = () => { if (!player) return; off = (player.getCurrentTime?.() || 0) - starts[0]; cur = -2; saveOff(); };
+  let downAt = 0; $('#artBody').addEventListener('pointerdown', () => { downAt = Date.now(); });
+  $('#artBody').addEventListener('click', e => { const c = e.target.closest('.cue'); if (!c || e.target.closest('.aw.k') || Date.now() - downAt > 350) return; seek(+c.dataset.ci); });
 }
 
 /* ---------- views ---------- */
