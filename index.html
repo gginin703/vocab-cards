@@ -439,7 +439,7 @@ const quoteToday = () => {
   return d % 2 === 0 ? at(QUOTES, d / 2) : at(BIBLE, (d - 1) / 2);
 };
 const quoteCardHTML = () => { const q = quoteToday(); return `<div class="sec qcard2"><span class="lbl">${BIBLE.includes(q) ? '今日經文' : '今日佳句'}</span><button class="qt" type="button" data-say="${esc(q.q)}" aria-label="聽這句話的發音"><span class="qt-mark" aria-hidden="true">“</span><span class="qt-en" lang="en">${esc(q.q)}</span></button><p class="qt-zh">${esc(q.zh)}</p><div class="qt-by">— ${esc(q.a)}${q.s ? `<span>${esc(q.s)}</span>` : ''}</div></div>`; };
-const BUILD = 'ebe1b8dc45';
+const BUILD = 'b810780593';
 const UNIT_SIZE = 50, REINSERT = 5, STATE_KEY = 'vocab-state-v1', THEME_KEY = 'vocab-theme', VOICE_KEY = 'vocab-voice';
 const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const $ = s => document.querySelector(s);
@@ -506,18 +506,52 @@ const seenRight = () => Object.values(state.stats).filter(s => s.R > 0).length;
 
 /* ---------- speech ---------- */
 let voice = null;
-function enVoices(){ const vs = window.speechSynthesis?.getVoices?.() || []; const us = vs.filter(v => /^en[-_]US$/i.test(v.lang)); return us.length ? us : vs.filter(v => /^en[-_]/i.test(v.lang)); }
+// Apple's novelty/robot voices are tagged en-US too; never offer them.
+const NOVELTY = /Albert|Bad News|Bahh|Bells|Boing|Bubbles|Cellos|Deranged|Good News|Hysterical|Jester|Junior|Kathy|Organ|Pipe Organ|Princess|Ralph|Superstar|Trinoids|Whisper|Wobble|Zarvox|Fred|Grandma|Grandpa|Eddy|Flo|Reed|Rocko|Sandy|Shelley/i;
+function enVoices(){ const vs = (window.speechSynthesis?.getVoices?.() || []).filter(v => !NOVELTY.test(v.name)); const us = vs.filter(v => /^en[-_]US$/i.test(v.lang)); return us.length ? us : vs.filter(v => /^en[-_]/i.test(v.lang)); }
 function pickVoice(){ const vs = enVoices(), saved = lget(VOICE_KEY);
-  voice = vs.find(v => v.name === saved) || vs.find(v => /Samantha|Ava|Allison|Google US English|Aria|Jenny|Zira/i.test(v.name)) || vs.find(v => v.localService) || vs[0] || null; }
+  voice = vs.find(v => v.name === saved) || vs.find(v => /Siri/i.test(v.name)) || vs.find(v => /Premium|Enhanced|Natural|Neural/i.test(v.name)) || vs.find(v => /Samantha|Ava|Allison|Nicky|Google US English|Aria|Jenny|Zira/i.test(v.name)) || vs.find(v => v.localService) || vs[0] || null; }
 if ('speechSynthesis' in window) { pickVoice(); speechSynthesis.onvoiceschanged = pickVoice; }
-function speak(text, btn){
-  if (!('speechSynthesis' in window)) { toast('這個瀏覽器不支援發音'); return; }
+// Real human recordings from the free dictionary API (US first); cached per word.
+const AUDIO_KEY = 'vocab-audio-v1';
+let AUD = (() => { try { return JSON.parse(lget(AUDIO_KEY) || '{}'); } catch { return {}; } })(), curAudio = null;
+async function wordAudio(w){
+  w = w.toLowerCase().replace(/[’']s$/, '');
+  if (w in AUD) return AUD[w];
+  const ctl = new AbortController(), to = setTimeout(() => ctl.abort(), 2500);
+  try {
+    const r = await fetch('https://api.dictionaryapi.dev/api/v2/entries/en/' + encodeURIComponent(w), { signal: ctl.signal });
+    if (r.status === 404) { AUD[w] = ''; }
+    else if (r.ok) {
+      const urls = (await r.json()).flatMap(e => (e.phonetics || []).map(p => p.audio)).filter(Boolean);
+      AUD[w] = urls.find(u => /-us\.mp3$/i.test(u)) || urls.find(u => /-(ca|au)\.mp3$/i.test(u)) || urls[0] || '';
+    } else return null;
+    try { lset(AUDIO_KEY, JSON.stringify(AUD)); } catch {}
+    return AUD[w];
+  } catch { return null; } finally { clearTimeout(to); }
+}
+function ttsSpeak(text, btn){
+  if (!('speechSynthesis' in window)) { toast('這個瀏覽器不支援發音'); btn?.classList.remove('playing'); return; }
   if (!voice) pickVoice();
   if (!voice) toast('找不到英文語音，請到手機設定下載「英文（美國）」聲音');
   speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(text); u.lang = 'en-US'; u.rate = .9; if (voice) u.voice = voice;
-  if (btn) { btn.classList.add('playing'); u.onend = u.onerror = () => btn.classList.remove('playing'); }
+  if (btn) u.onend = u.onerror = () => btn.classList.remove('playing');
   speechSynthesis.speak(u);
+}
+let speakTok = 0;
+function speak(text, btn){
+  const tok = ++speakTok; curAudio?.pause(); try { speechSynthesis?.cancel(); } catch {}
+  btn?.classList.add('playing');
+  const word = /^[A-Za-z][A-Za-z'’-]*$/.test(text.trim()) ? text.trim() : null;
+  if (!word || lget('vocab-tts-only') === '1') return ttsSpeak(text, btn);
+  wordAudio(word).then(url => {
+    if (tok !== speakTok) return;
+    if (!url) return ttsSpeak(text, btn);
+    const a = curAudio = new Audio(url);
+    a.onended = () => btn?.classList.remove('playing');
+    a.play().catch(() => { if (tok === speakTok) ttsSpeak(text, btn); });
+  });
 }
 
 let toastT;
@@ -769,12 +803,12 @@ function openStats(){
       <div class="tile"><b>${state.unit + 1} / ${state.unitCount}</b><span>單元（目前整理了 ${WORDS.length} 字）</span></div></div>
     <div class="sec"><span class="lbl">最常滑「不熟」的字</span>${worst.length ? worst.map(([i, s]) => li(BY[i].w, BY[i].zh.split(/[；;]/)[0], `不熟 ${s.L} 次 · 熟悉 ${s.R} 次`)).join('') : '<p class="muted">還沒有。左滑過的字會列在這裡。</p>'}</div>
     ${devHTML()}
-    <p class="muted" style="text-align:center">版本 ${BUILD === 'ebe1b8dc45' ? 'claude.ai' : BUILD}</p>
+    <p class="muted" style="text-align:center">版本 ${BUILD === 'b810780593' ? 'claude.ai' : BUILD}</p>
     <div class="sec"><span class="lbl">設定</span>
       <div class="setting"><span>每日佳句</span><div class="seg" role="group" aria-label="每日佳句內容">${[['all','輪流'],['q','名言'],['b','聖經']].map(([v, n]) => `<button type="button" data-quote-set="${v}" aria-pressed="${quoteMode() === v}">${n}</button>`).join('')}</div></div>
       <div class="setting"><span>外觀</span><div class="seg" role="group" aria-label="外觀">${[['auto','自動'],['light','淺色'],['dark','深色']].map(([v, n]) => `<button type="button" data-theme-set="${v}" aria-pressed="${th === v}">${n}</button>`).join('')}</div></div>
       <div class="setting" style="flex-direction:column;align-items:stretch;gap:8px"><span>發音聲音</span>${vs.length
-        ? `<div class="voice"><label class="sr" for="voiceSel">選擇英文發音聲音</label><select id="voiceSel">${vs.map(v => `<option value="${esc(v.name)}"${voice && v.name === voice.name ? ' selected' : ''}>${esc(v.name)}</option>`).join('')}</select><button class="chip" id="voiceTest" type="button">試聽</button></div><p class="muted">只列出英文（美國）聲音，聽起來不像英文就換一個。</p>`
+        ? `<div class="voice"><label class="sr" for="voiceSel">選擇英文發音聲音</label><select id="voiceSel">${vs.map(v => `<option value="${esc(v.name)}"${voice && v.name === voice.name ? ' selected' : ''}>${esc(v.name)}</option>`).join('')}</select><button class="chip" id="voiceTest" type="button">試聽</button></div><p class="muted">單字會優先播放字典的真人錄音；查不到錄音、或念片語和句子時，才用這裡選的手機語音。已自動排除機器人、怪腔調的聲音。</p>`
         : '<p class="muted">這台裝置目前沒有英文語音。iPhone 到「設定 › 輔助使用 › 朗讀內容 › 聲音 › 英文」下載一個美國英文聲音後，重新打開這頁。</p>'}</div>
       <div class="setting" style="flex-direction:column;align-items:stretch;gap:8px"><span>備份進度</span>
         <p class="muted" style="margin:0">進度只存在這支手機上。換手機或清除 Safari 資料前，先備份到「檔案」。</p>
@@ -792,7 +826,7 @@ function openStats(){
       const v = b.dataset.themeSet; lset(THEME_KEY, v); applyTheme(v);
       $('#sheetBody').querySelectorAll('[data-theme-set]').forEach(x => x.setAttribute('aria-pressed', x === b)); });
     $('#bkSave').onclick = backup; $('#bkLoad').onchange = e => restore(e.target.files[0]);
-    const sel = $('#voiceSel'); if (sel) { sel.onchange = () => { voice = enVoices().find(v => v.name === sel.value) || voice; lset(VOICE_KEY, sel.value); speak('unpreventable'); }; $('#voiceTest').onclick = () => speak('unpreventable'); }
+    const sel = $('#voiceSel'); if (sel) { sel.onchange = () => { voice = enVoices().find(v => v.name === sel.value) || voice; lset(VOICE_KEY, sel.value); ttsSpeak('This is how I sound.'); }; $('#voiceTest').onclick = () => ttsSpeak('This is how I sound.'); }
   });
 }
 async function backup(){
