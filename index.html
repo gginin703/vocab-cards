@@ -333,9 +333,9 @@ u{text-decoration:none;color:var(--root);font-weight:800}
 .art-sub{margin:1.7em 0 .6em;font-family:var(--serif);font-size:calc(var(--fs) + 3px);line-height:1.3;font-weight:800;display:flex;align-items:center;gap:10px}
 .art-sub::before{content:"";flex:0 0 5px;align-self:stretch;border-radius:3px;background:var(--r3)}
 .tk-frame{position:relative;width:100%;aspect-ratio:16/9;border-radius:14px;overflow:hidden;background:#000;margin:4px 0 8px}
-.tk-frame iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+.tk-frame iframe,.tk-frame video{position:absolute;inset:0;width:100%;height:100%;border:0;background:#000}
 .tk-dock{position:sticky;top:0;z-index:5;background:var(--k);padding:4px 0 8px;margin:0 0 6px}
-.tk-now{min-height:3.2em;font-size:17px;line-height:1.5;padding:8px 12px;border-radius:12px;background:var(--s1);border:1px solid var(--ln);margin:6px 0}
+.tk-now{min-height:3.2em;font-size:22px;line-height:1.45;font-weight:500;padding:8px 12px;border-radius:12px;background:var(--s1);border:1px solid var(--ln);margin:6px 0}
 .tk-ctl{display:flex;gap:6px;flex-wrap:wrap}
 .tk-ctl button{flex:1 1 auto;min-height:40px;border-radius:10px;border:1px solid var(--ln);background:var(--s1);color:var(--t1);font:inherit;font-size:14px;padding:6px 8px;cursor:pointer}
 .tk-ctl button[aria-pressed="true"]{background:var(--r3);color:#fff;border-color:var(--r3)}
@@ -439,7 +439,7 @@ const quoteToday = () => {
   return d % 2 === 0 ? at(QUOTES, d / 2) : at(BIBLE, (d - 1) / 2);
 };
 const quoteCardHTML = () => { const q = quoteToday(); return `<div class="sec qcard2"><span class="lbl">${BIBLE.includes(q) ? '今日經文' : '今日佳句'}</span><button class="qt" type="button" data-say="${esc(q.q)}" aria-label="聽這句話的發音"><span class="qt-mark" aria-hidden="true">“</span><span class="qt-en" lang="en">${esc(q.q)}</span></button><p class="qt-zh">${esc(q.zh)}</p><div class="qt-by">— ${esc(q.a)}${q.s ? `<span>${esc(q.s)}</span>` : ''}</div></div>`; };
-const BUILD = '6ed0b8f694';
+const BUILD = '55e37bc774';
 const UNIT_SIZE = 50, REINSERT = 5, STATE_KEY = 'vocab-state-v1', THEME_KEY = 'vocab-theme', VOICE_KEY = 'vocab-voice';
 const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const $ = s => document.querySelector(s);
@@ -769,7 +769,7 @@ function openStats(){
       <div class="tile"><b>${state.unit + 1} / ${state.unitCount}</b><span>單元（目前整理了 ${WORDS.length} 字）</span></div></div>
     <div class="sec"><span class="lbl">最常滑「不熟」的字</span>${worst.length ? worst.map(([i, s]) => li(BY[i].w, BY[i].zh.split(/[；;]/)[0], `不熟 ${s.L} 次 · 熟悉 ${s.R} 次`)).join('') : '<p class="muted">還沒有。左滑過的字會列在這裡。</p>'}</div>
     ${devHTML()}
-    <p class="muted" style="text-align:center">版本 ${BUILD === '6ed0b8f694' ? 'claude.ai' : BUILD}</p>
+    <p class="muted" style="text-align:center">版本 ${BUILD === '55e37bc774' ? 'claude.ai' : BUILD}</p>
     <div class="sec"><span class="lbl">設定</span>
       <div class="setting"><span>每日佳句</span><div class="seg" role="group" aria-label="每日佳句內容">${[['all','輪流'],['q','名言'],['b','聖經']].map(([v, n]) => `<button type="button" data-quote-set="${v}" aria-pressed="${quoteMode() === v}">${n}</button>`).join('')}</div></div>
       <div class="setting"><span>外觀</span><div class="seg" role="group" aria-label="外觀">${[['auto','自動'],['light','淺色'],['dark','深色']].map(([v, n]) => `<button type="button" data-theme-set="${v}" aria-pressed="${th === v}">${n}</button>`).join('')}</div></div>
@@ -1214,7 +1214,7 @@ async function renderTalks(){
   const t = TALKS.find(x => x.id === talkId), tk = (state.tk ||= { done: {} }), isToday = t.id === tkToday(), fs = artFs();
   const [pace, paceCls] = tkPace(t.wpm);
   artKnown = new Set();
-  const sync = !!(t.yt && t.cues), off = (tk.off ||= {})[t.id] ?? null;
+  const sync = !!(t.cues && (t.mp4 || t.yt)), off = (tk.off ||= {})[t.id] ?? null;
   let ci = 0;
   const body = sync
     ? t.cues.map(g => `<p class="art-p" lang="en">${g.map(c => `<span class="cue" data-ci="${ci++}">${artParaHTML(c[1])}</span>`).join(' ')}</p>`).join('')
@@ -1285,16 +1285,24 @@ function tkPlayer(t, off0){
   };
   let nowBound = false; const bindNow = () => { if (!nowBound) { nowBound = true; bindArticleWords(now); } };
   showOff();
-  $('#ytBox').innerHTML = '<p class="muted" style="color:#ccc;padding:16px">載入播放器中…</p>';
-  loadYT().then(YT => {
+  const tick = () => { tkTimer = setInterval(() => {
+    if (!document.body.contains(spans[0] || document.body)) { clearInterval(tkTimer); return; }
+    const s = player.getCurrentTime?.() || 0, i = idxAt(s);
+    if (loop && cur >= 0 && i > cur) { player.seekTo(starts[cur] + off, true); return; }
+    paint(i);
+  }, 150); };
+  const useYT = () => { $('#ytBox').innerHTML = '<p class="muted" style="color:#ccc;padding:16px">載入播放器中…</p>'; loadYT().then(YT => {
     player = new YT.Player('ytBox', { videoId: t.yt, playerVars: { playsinline: 1, rel: 0, modestbranding: 1, cc_load_policy: 0 },
-      events: { onReady: () => { tkTimer = setInterval(() => {
-        if (!document.body.contains(spans[0] || document.body)) { clearInterval(tkTimer); return; }
-        const s = player.getCurrentTime?.() || 0, i = idxAt(s);
-        if (loop && cur >= 0 && i > cur) { player.seekTo(starts[cur] + off, true); return; }
-        paint(i);
-      }, 150); } } });
-  }).catch(() => { $('#ytBox').innerHTML = `<p style="color:#ccc;padding:16px">這裡載不到 YouTube 播放器。請改用手機上的 App，或 <a style="color:#9cf" href="https://www.youtube.com/watch?v=${esc(t.yt)}" target="_blank" rel="noopener">到 YouTube 看 ›</a></p>`; });
+      events: { onReady: tick } });
+  }).catch(() => { $('#ytBox').innerHTML = `<p style="color:#ccc;padding:16px">這裡載不到 YouTube 播放器。請改用手機上的 App，或 <a style="color:#9cf" href="https://www.youtube.com/watch?v=${esc(t.yt)}" target="_blank" rel="noopener">到 YouTube 看 ›</a></p>`; }); };
+  const useMP4 = () => {
+    $('#ytBox').innerHTML = `<video id="tkVid" src="${esc(t.mp4)}" controls playsinline preload="metadata"></video>`;
+    const v = $('#tkVid');
+    player = { getCurrentTime: () => v.currentTime, seekTo: s => { v.currentTime = s; }, playVideo: () => v.play().catch(() => {}), setPlaybackRate: r => { v.playbackRate = r; } };
+    v.addEventListener('error', () => { clearInterval(tkTimer); if (t.yt) useYT(); else $('#ytBox').innerHTML = `<p style="color:#ccc;padding:16px">影片載入失敗，<a style="color:#9cf" href="${esc(t.url)}" target="_blank" rel="noopener">到 TED 網站看 ›</a></p>`; }, { once: true });
+    tick();
+  };
+  if (t.mp4) useMP4(); else useYT();
   $('#tkPrev').onclick = () => seek(Math.max(0, cur - 1));
   $('#tkNext').onclick = () => seek(Math.min(starts.length - 1, cur + 1));
   $('#tkRep').onclick = () => seek(Math.max(0, cur));
