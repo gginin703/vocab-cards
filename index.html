@@ -353,6 +353,10 @@ u{text-decoration:none;color:var(--root);font-weight:800}
 .tk-tr[open]>summary::before{content:'▾ '}
 .pace.slow{color:#2e8b57}.pace.mid{color:inherit}.pace.fast{color:#c0563a}
 .src-ted .art-src-chip{background:#e62b1e;color:#fff}
+.src-ted.ed .art-src-chip{background:#c41e3a}
+.kd{font-style:normal;font-size:11px;font-weight:800;color:#c41e3a;margin-right:2px}
+.tk-kinds{margin:0 0 8px}
+.tk-kinds .chip[aria-pressed="true"]{background:var(--r3);color:#fff;border-color:var(--r3)}
 .aw{border-radius:4px;transition:background .15s}
 .aw.k{text-decoration:underline dotted;text-decoration-color:var(--r3);text-decoration-thickness:2px;text-underline-offset:5px}
 .aw.press{background:color-mix(in srgb,var(--r3) 28%,transparent)}
@@ -439,7 +443,7 @@ const quoteToday = () => {
   return d % 2 === 0 ? at(QUOTES, d / 2) : at(BIBLE, (d - 1) / 2);
 };
 const quoteCardHTML = () => { const q = quoteToday(); return `<div class="sec qcard2"><span class="lbl">${BIBLE.includes(q) ? '今日經文' : '今日佳句'}</span><button class="qt" type="button" data-say="${esc(q.q)}" aria-label="聽這句話的發音"><span class="qt-mark" aria-hidden="true">“</span><span class="qt-en" lang="en">${esc(q.q)}</span></button><p class="qt-zh">${esc(q.zh)}</p><div class="qt-by">— ${esc(q.a)}${q.s ? `<span>${esc(q.s)}</span>` : ''}</div></div>`; };
-const BUILD = 'b810780593';
+const BUILD = '6bc7c52a4e';
 const UNIT_SIZE = 50, REINSERT = 5, STATE_KEY = 'vocab-state-v1', THEME_KEY = 'vocab-theme', VOICE_KEY = 'vocab-voice';
 const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const $ = s => document.querySelector(s);
@@ -545,13 +549,17 @@ function speak(text, btn){
   btn?.classList.add('playing');
   const word = /^[A-Za-z][A-Za-z'’-]*$/.test(text.trim()) ? text.trim() : null;
   if (!word || lget('vocab-tts-only') === '1') return ttsSpeak(text, btn);
-  wordAudio(word).then(url => {
+  // 1) dictionary human recording  2) our own Kokoro recording (audio/<slug>.mp3)  3) phone TTS
+  const local = 'audio/' + word.toLowerCase().replace(/[’']s$/, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') + '.mp3';
+  const play = (url, next) => {
     if (tok !== speakTok) return;
-    if (!url) return ttsSpeak(text, btn);
     const a = curAudio = new Audio(url);
     a.onended = () => btn?.classList.remove('playing');
-    a.play().catch(() => { if (tok === speakTok) ttsSpeak(text, btn); });
-  });
+    a.onerror = () => { if (tok === speakTok) next(); };
+    a.play().catch(() => { if (tok === speakTok && a.error) next(); });
+  };
+  const viaLocal = () => (location.protocol.startsWith('http') && !window.claude?.use) ? play(local, () => ttsSpeak(text, btn)) : ttsSpeak(text, btn);
+  wordAudio(word).then(url => url ? play(url, viaLocal) : viaLocal());
 }
 
 let toastT;
@@ -803,7 +811,7 @@ function openStats(){
       <div class="tile"><b>${state.unit + 1} / ${state.unitCount}</b><span>單元（目前整理了 ${WORDS.length} 字）</span></div></div>
     <div class="sec"><span class="lbl">最常滑「不熟」的字</span>${worst.length ? worst.map(([i, s]) => li(BY[i].w, BY[i].zh.split(/[；;]/)[0], `不熟 ${s.L} 次 · 熟悉 ${s.R} 次`)).join('') : '<p class="muted">還沒有。左滑過的字會列在這裡。</p>'}</div>
     ${devHTML()}
-    <p class="muted" style="text-align:center">版本 ${BUILD === 'b810780593' ? 'claude.ai' : BUILD}</p>
+    <p class="muted" style="text-align:center">版本 ${BUILD === '6bc7c52a4e' ? 'claude.ai' : BUILD}</p>
     <div class="sec"><span class="lbl">設定</span>
       <div class="setting"><span>每日佳句</span><div class="seg" role="group" aria-label="每日佳句內容">${[['all','輪流'],['q','名言'],['b','聖經']].map(([v, n]) => `<button type="button" data-quote-set="${v}" aria-pressed="${quoteMode() === v}">${n}</button>`).join('')}</div></div>
       <div class="setting"><span>外觀</span><div class="seg" role="group" aria-label="外觀">${[['auto','自動'],['light','淺色'],['dark','深色']].map(([v, n]) => `<button type="button" data-theme-set="${v}" aria-pressed="${th === v}">${n}</button>`).join('')}</div></div>
@@ -1233,7 +1241,7 @@ function renderArticleQuiz(a){
 }
 
 /* ---------- listening: TED talks (embedded player + verbatim transcript) ---------- */
-let TALKS = null, talkId = null, talkAll = false;
+let TALKS = null, talkId = null, talkAll = false, tkKind = 'all';
 const tkMin = s => Math.max(1, Math.round(s / 60));
 const tkPace = w => w < 130 ? ['慢', 'slow'] : w < 160 ? ['中等', 'mid'] : ['快', 'fast'];
 const tkToday = () => { const n = TALKS.length, d = Math.floor((Date.now() - new Date(2026, 10, 23).getTime()) / DAY); return TALKS[((d % n) + n) % n].id; };
@@ -1254,10 +1262,10 @@ async function renderTalks(){
     ? t.cues.map(g => `<p class="art-p" lang="en">${g.map(c => `<span class="cue" data-ci="${ci++}">${artParaHTML(c[1])}</span>`).join(' ')}</p>`).join('')
     : t.paras.map(p => `<p class="art-p" lang="en">${artParaHTML(p)}</p>`).join('');
   const known = [...artKnown].map(id => BY[id]).filter(Boolean);
-  const rest = TALKS.filter(x => x.id !== t.id).sort((a, b) => (tk.done[a.id] ? 1 : 0) - (tk.done[b.id] ? 1 : 0) || a.dur - b.dur), shown = talkAll ? rest : rest.slice(0, 5);
-  const others = shown.map(x => `<button class="art-o" data-tk="${x.id}"><b lang="en">${esc(x.title)}</b><small><span>${esc(x.speaker)} · ${tkMin(x.dur)} 分鐘 · 語速${tkPace(x.wpm)[0]}</span>${tk.done[x.id] ? '<span class="dn">看過了</span>' : ''}</small></button>`).join('');
+  const rest = TALKS.filter(x => x.id !== t.id && (tkKind === 'all' || x.kind === tkKind)).sort((a, b) => (tk.done[a.id] ? 1 : 0) - (tk.done[b.id] ? 1 : 0) || a.dur - b.dur), shown = talkAll ? rest : rest.slice(0, 5);
+  const others = shown.map(x => `<button class="art-o" data-tk="${x.id}"><b lang="en">${esc(x.title)}</b><small><span>${x.kind === 'TED-Ed' ? '<i class="kd">TED-Ed</i> ' : ''}${esc(x.speaker)} · ${tkMin(x.dur)} 分鐘 · 語速${tkPace(x.wpm)[0]}</span>${tk.done[x.id] ? '<span class="dn">看過了</span>' : ''}</small></button>`).join('');
   root.innerHTML = `<div class="art tk" style="--fs:${fs}px">
-    <header class="art-hero src-ted"><div class="art-badges"><span class="art-src-chip">TED</span>${isToday ? '<span class="tag">今日影片</span>' : ''}</div>
+    <header class="art-hero src-ted${t.kind === 'TED-Ed' ? ' ed' : ''}"><div class="art-badges"><span class="art-src-chip">${esc(t.kind || 'TED')}</span>${isToday ? '<span class="tag">今日影片</span>' : ''}</div>
       <h2 class="art-h" lang="en">${esc(t.title)}</h2>
       <div class="art-meta"><span lang="en">${esc(t.speaker)}</span><span>${tkMin(t.dur)} 分鐘</span><span class="pace ${paceCls}">語速${pace}（每分鐘 ${t.wpm} 字）</span></div></header>
     ${sync ? `<div class="tk-dock" id="tkDock"><div class="tk-frame"><div id="ytBox"></div></div>
@@ -1277,7 +1285,7 @@ async function renderTalks(){
     <footer class="art-end"><span class="orn" aria-hidden="true">● ● ●</span><span>影片與逐字稿：TED（CC BY-NC-ND 4.0），僅供個人學習</span><a href="${esc(t.url)}" target="_blank" rel="noopener">TED 原始頁面 ›</a></footer>
     <div class="art-cta"><h3>${tk.done[t.id] ? '已標記看過' : '看完了嗎？'}</h3><p>標記後會排到清單最後面，下次先推沒看過的。</p>
       <button class="btn big" id="tkDone">${tk.done[t.id] ? '取消標記' : '標記為看過'}</button></div>
-    <div class="sec"><span class="lbl">其他影片</span><div class="art-others">${others}</div>${rest.length > 5 ? `<button class="chip" id="tkMore" type="button" style="align-self:center;margin-top:6px">${talkAll ? '收起' : '看全部 ' + (rest.length + 1) + ' 部'}</button>` : ''}</div></div>`;
+    <div class="sec"><span class="lbl">其他影片</span><div class="chips tk-kinds" role="group" aria-label="影片類型">${[['all', '全部'], ['TED', 'TED 演講'], ['TED-Ed', 'TED-Ed 動畫課']].map(([k, n]) => `<button class="chip" type="button" data-kind="${k}" aria-pressed="${tkKind === k}">${n}（${k === 'all' ? TALKS.length : TALKS.filter(x => x.kind === k).length}）</button>`).join('')}</div><div class="art-others">${others}</div>${rest.length > 5 ? `<button class="chip" id="tkMore" type="button" style="align-self:center;margin-top:6px">${talkAll ? '收起' : '看全部 ' + (rest.length + 1) + ' 部'}</button>` : ''}</div></div>`;
   const pg = root.closest('.page'); if (pg) pg.onscroll = hideWordCard;
   const setFs = d => { const v = Math.max(16, Math.min(26, artFs() + d)); lset(ART_FS_KEY, v); root.querySelector('.art').style.setProperty('--fs', v + 'px'); };
   $('#fsDown').onclick = () => setFs(-1); $('#fsUp').onclick = () => setFs(1);
@@ -1286,6 +1294,7 @@ async function renderTalks(){
   $('#tkDone').onclick = () => { if (tk.done[t.id]) delete tk.done[t.id]; else { tk.done[t.id] = Date.now(); if (!state.days.includes(today())) state.days.push(today()); } save(); renderTalks(); };
   root.querySelectorAll('[data-tk]').forEach(b => b.onclick = () => { talkId = b.dataset.tk; renderTalks(); $('.page')?.scrollTo?.(0, 0); });
   $('#tkMore')?.addEventListener('click', () => { talkAll = !talkAll; renderTalks(); });
+  root.querySelectorAll('[data-kind]').forEach(b => b.onclick = () => { tkKind = b.dataset.kind; talkAll = false; renderTalks(); });
   root.querySelectorAll('[data-kw]').forEach(b => b.onclick = () => showWordCard(b.dataset.kw));
   if (sync) tkPlayer(t, off);
 }
