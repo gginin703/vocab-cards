@@ -443,7 +443,7 @@ const quoteToday = () => {
   return d % 2 === 0 ? at(QUOTES, d / 2) : at(BIBLE, (d - 1) / 2);
 };
 const quoteCardHTML = () => { const q = quoteToday(); return `<div class="sec qcard2"><span class="lbl">${BIBLE.includes(q) ? '今日經文' : '今日佳句'}</span><button class="qt" type="button" data-say="${esc(q.q)}" aria-label="聽這句話的發音"><span class="qt-mark" aria-hidden="true">“</span><span class="qt-en" lang="en">${esc(q.q)}</span></button><p class="qt-zh">${esc(q.zh)}</p><div class="qt-by">— ${esc(q.a)}${q.s ? `<span>${esc(q.s)}</span>` : ''}</div></div>`; };
-const BUILD = '444b09bb9d';
+const BUILD = 'b7b1481682';
 const UNIT_SIZE = 50, REINSERT = 5, STATE_KEY = 'vocab-state-v1', THEME_KEY = 'vocab-theme', VOICE_KEY = 'vocab-voice';
 const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const $ = s => document.querySelector(s);
@@ -812,12 +812,13 @@ function openStats(){
       <div class="tile"><b>${state.unit + 1} / ${state.unitCount}</b><span>單元（目前整理了 ${WORDS.length} 字）</span></div></div>
     <div class="sec"><span class="lbl">最常滑「不熟」的字</span>${worst.length ? worst.map(([i, s]) => li(BY[i].w, BY[i].zh.split(/[；;]/)[0], `不熟 ${s.L} 次 · 熟悉 ${s.R} 次`)).join('') : '<p class="muted">還沒有。左滑過的字會列在這裡。</p>'}</div>
     ${devHTML()}
-    <p class="muted" style="text-align:center">版本 ${BUILD === '444b09bb9d' ? 'claude.ai' : BUILD}</p>
+    <p class="muted" style="text-align:center">版本 ${BUILD === 'b7b1481682' ? 'claude.ai' : BUILD}</p>
     <div class="sec"><span class="lbl">設定</span>
       <div class="setting"><span>每日佳句</span><div class="seg" role="group" aria-label="每日佳句內容">${[['all','輪流'],['q','名言'],['b','聖經']].map(([v, n]) => `<button type="button" data-quote-set="${v}" aria-pressed="${quoteMode() === v}">${n}</button>`).join('')}</div></div>
       <div class="setting"><span>外觀</span><div class="seg" role="group" aria-label="外觀">${[['auto','自動'],['light','淺色'],['dark','深色']].map(([v, n]) => `<button type="button" data-theme-set="${v}" aria-pressed="${th === v}">${n}</button>`).join('')}</div></div>
-      <div class="setting" style="flex-direction:column;align-items:stretch;gap:8px"><span>發音聲音</span>${vs.length
-        ? `<div class="voice"><label class="sr" for="voiceSel">選擇英文發音聲音</label><select id="voiceSel">${vs.map(v => `<option value="${esc(v.name)}"${voice && v.name === voice.name ? ' selected' : ''}>${esc(v.name)}</option>`).join('')}</select><button class="chip" id="voiceTest" type="button">試聽</button></div><p class="muted">單字會播放 App 內建的錄音（每個字都是同一個美式男聲）；念片語和句子時，才用這裡選的手機語音。已自動排除機器人、怪腔調的聲音。</p>`
+      <div class="setting"><span>單字發音</span><div class="seg" role="group" aria-label="單字發音來源">${[['0','內建錄音'],['1','手機語音']].map(([v, n]) => `<button type="button" data-wsrc="${v}" aria-pressed="${(lget('vocab-tts-only') === '1' ? '1' : '0') === v}">${n}</button>`).join('')}</div></div>
+      <div class="setting" style="flex-direction:column;align-items:stretch;gap:8px"><span>手機語音</span>${vs.length
+        ? `<div class="voice"><label class="sr" for="voiceSel">選擇英文發音聲音</label><select id="voiceSel">${vs.map(v => `<option value="${esc(v.name)}"${voice && v.name === voice.name ? ' selected' : ''}>${esc(v.name)}</option>`).join('')}</select><button class="chip" id="voiceTest" type="button">試聽</button></div><p class="muted">「內建錄音」：每個單字都是 App 裡同一個美式男聲。「手機語音」：單字也改用這裡選的聲音。片語和句子一律用這裡選的聲音。在這裡換聲音時，單字發音會自動切到「手機語音」。</p>`
         : '<p class="muted">這台裝置目前沒有英文語音。iPhone 到「設定 › 輔助使用 › 朗讀內容 › 聲音 › 英文」下載一個美國英文聲音後，重新打開這頁。</p>'}</div>
       <div class="setting" style="flex-direction:column;align-items:stretch;gap:8px"><span>備份進度</span>
         <p class="muted" style="margin:0">進度只存在這支手機上。換手機或清除 Safari 資料前，先備份到「檔案」。</p>
@@ -834,8 +835,10 @@ function openStats(){
     $('#sheetBody').querySelectorAll('[data-theme-set]').forEach(b => b.onclick = () => {
       const v = b.dataset.themeSet; lset(THEME_KEY, v); applyTheme(v);
       $('#sheetBody').querySelectorAll('[data-theme-set]').forEach(x => x.setAttribute('aria-pressed', x === b)); });
+    const wsrc = v => { lset('vocab-tts-only', v); $('#sheetBody').querySelectorAll('[data-wsrc]').forEach(x => x.setAttribute('aria-pressed', x.dataset.wsrc === v)); };
+    $('#sheetBody').querySelectorAll('[data-wsrc]').forEach(b => b.onclick = () => { wsrc(b.dataset.wsrc); speak('abandon'); });
     $('#bkSave').onclick = backup; $('#bkLoad').onchange = e => restore(e.target.files[0]);
-    const sel = $('#voiceSel'); if (sel) { sel.onchange = () => { voice = enVoices().find(v => v.name === sel.value) || voice; lset(VOICE_KEY, sel.value); ttsSpeak('This is how I sound.'); }; $('#voiceTest').onclick = () => ttsSpeak('This is how I sound.'); }
+    const sel = $('#voiceSel'); if (sel) { sel.onchange = () => { voice = enVoices().find(v => v.name === sel.value) || voice; lset(VOICE_KEY, sel.value); wsrc('1'); ttsSpeak('abandon. This is how I sound.'); }; $('#voiceTest').onclick = () => ttsSpeak('abandon. This is how I sound.'); }
   });
 }
 async function backup(){
