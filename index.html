@@ -241,6 +241,9 @@ u{text-decoration:none;color:var(--root);font-weight:800}
 .pip.on{background:var(--r2);border-color:var(--r2);opacity:1}
 .pip.cur{opacity:1;border-color:var(--t1);transform:scale(1.25)}
 .qzh{font-size:clamp(32px,9.5vw,40px);font-weight:800;line-height:1.3;letter-spacing:-.3px;color:var(--t1);overflow-wrap:anywhere}
+.qzh.long{font-size:clamp(20px,5.6vw,24px);font-weight:700;line-height:1.45}
+.qzh-g{display:block}.qzh-g+.qzh-g{margin-top:4px}
+.qzh-g i{font-style:normal;font-size:.6em;font-weight:600;color:var(--t3);margin-right:6px;vertical-align:.15em}
 .qsub{color:var(--t3);font-size:15px;margin:0;line-height:1.5}
 .qsent{font-size:21px;line-height:1.8;color:var(--t1);margin:0}
 .qsent .blank{display:inline-block;min-width:3.2em;border-bottom:3px solid var(--r2);margin:0 3px;height:1.05em;vertical-align:-3px;transition:all .3s}
@@ -443,7 +446,7 @@ const quoteToday = () => {
   return d % 2 === 0 ? at(QUOTES, d / 2) : at(BIBLE, (d - 1) / 2);
 };
 const quoteCardHTML = () => { const q = quoteToday(); return `<div class="sec qcard2"><span class="lbl">${BIBLE.includes(q) ? '今日經文' : '今日佳句'}</span><button class="qt" type="button" data-say="${esc(q.q)}" aria-label="聽這句話的發音"><span class="qt-mark" aria-hidden="true">“</span><span class="qt-en" lang="en">${esc(q.q)}</span></button><p class="qt-zh">${esc(q.zh)}</p><div class="qt-by">— ${esc(q.a)}${q.s ? `<span>${esc(q.s)}</span>` : ''}</div></div>`; };
-const BUILD = '5c63c86798';
+const BUILD = '53e49ee7ff';
 const UNIT_SIZE = 50, REINSERT = 5, STATE_KEY = 'vocab-state-v1', THEME_KEY = 'vocab-theme', VOICE_KEY = 'vocab-voice';
 const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const $ = s => document.querySelector(s);
@@ -865,6 +868,11 @@ const DAY = 864e5;
 const isLong = id => { const m = state.mem[id]; return !!m && m.length >= 5 && m[m.length - 1] - m[0] >= 60 * DAY; };
 const isFam = e => e.need.every(t => e.done.includes(t));
 const norm = x => String(x || '').trim().toLowerCase().replace(/[‘’]/g, "'").replace(/\s+/g, ' ');
+// all senses, grouped by part of speech (quiz prompts: the everyday meaning is always somewhere in the list)
+const zhGroups = w => w.zh.split(/[；;]/).map(g => { const m = g.trim().match(/^([a-z]+\.)\s*(.*)$/i); return { pos: m ? m[1] : '', t: (m ? m[2] : g).split(/\s*\d+\.\s*/).filter(Boolean).map(x => x.trim()).join('；') }; }).filter(g => g.t);
+const zhQ = w => { const gs = zhGroups(w), multi = gs.length > 1 || gs.some(g => g.pos), len = gs.reduce((n, g) => n + g.t.length, 0);
+  return `<div class="qzh${len > 9 ? ' long' : ''}">${gs.map(g => `<span class="qzh-g">${multi && g.pos ? `<i>${esc(g.pos)}</i>` : ''}${esc(g.t)}</span>`).join('')}</div>`; };
+const zhQtext = w => zhGroups(w).map(g => (g.pos ? g.pos + ' ' : '') + g.t).join('　');
 const zh1 = w => w.zh.replace(/^[a-z.\s/]+/i, '').split(/[；;]/)[0].split(/\s*\d+\.\s*/).filter(Boolean)[0] || w.zh;
 function clozeOf(w){
   if (!w.ex?.[0]) return null;
@@ -962,15 +970,15 @@ function renderQuiz(){
   const submit = `<div class="qfoot" id="qfoot"><button class="btn big" id="qgo" type="button" disabled>確認</button><button class="qlink" id="qskip" type="button">不會，看答案</button></div>`;
   let body = '';
   if (c.type === 'choose') {
-    body = `<div><div class="qzh">${esc(zh1(w))}</div><p class="qsub" style="margin-top:6px">${esc(w.pos)}　選出對應的英文單字</p></div>
+    body = `<div>${zhQ(w)}<p class="qsub" style="margin-top:6px">${esc(w.pos)}　選出對應的英文單字</p></div>
       <div class="opts">${c.opts.map((o, i) => `<button class="opt" type="button" data-o="${o}" lang="en"><span class="k">${'ABCD'[i]}</span>${esc(BY[o].w)}</button>`).join('')}</div><div class="qfoot" id="qfoot"></div>`;
   } else if (c.type === 'spell') {
-    body = `<div><div class="qzh">${esc(zh1(w))}</div><p class="qsub" style="margin-top:6px">${esc(w.pos)}　拼出英文，要完全拼對</p></div>${boxes}<p class="qlen">${letters} 個字母</p>${submit}`;
+    body = `<div>${zhQ(w)}<p class="qsub" style="margin-top:6px">${esc(w.pos)}　拼出英文，要完全拼對</p></div>${boxes}<p class="qlen">${letters} 個字母</p>${submit}`;
   } else if (c.type === 'listen') {
     body = `<button class="qplay" id="qplay" type="button" aria-label="播放發音">${SPK}</button><p class="qsub" style="text-align:center">聽發音，拼出這個字</p>${boxes}<p class="qlen">${letters} 個字母</p>${submit}`;
   } else {
     const s0 = w.ex[0], sent = esc(s0.slice(0, z.at)) + '<span class="blank" id="qblank" aria-label="空格"></span>' + esc(s0.slice(z.at + z.form.length)), diff = norm(z.form) !== norm(w.w);
-    body = `<p class="qsent" lang="en">${sent}</p><p class="qsub">${esc(w.ex[1])}</p><p class="qsub">提示：${esc(zh1(w))}${diff ? '　·　要照句子改成正確的詞形' : ''}</p>${boxes}${submit}`;
+    body = `<p class="qsent" lang="en">${sent}</p><p class="qsub">${esc(w.ex[1])}</p><p class="qsub">提示：${esc(zhQtext(w))}${diff ? '　·　要照句子改成正確的詞形' : ''}</p>${boxes}${submit}`;
   }
   root.innerHTML = `<div class="qwrap">${top}<div class="qcard t-${c.type}">${meta}${body}</div></div>`;
 
@@ -990,7 +998,7 @@ function renderQuiz(){
     const bl = $('#qblank'); if (bl) { bl.className = 'blank fill' + (ok ? '' : ' bad'); bl.textContent = ans; }
     const foot = $('#qfoot');
     foot.innerHTML = `<div class="qfb ${ok ? 'ok' : 'bad'}" role="status"><div class="qfb-h">${ok ? CHECK + '答對了' : CROSS + (given ? '你填的是「' + esc(given) + '」' : '答案是')}</div>
-      <div class="qfb-a" lang="en">${esc(ans)}</div><div class="qfb-s">${esc(w.pos)}　${esc(zh1(w))}</div>
+      <div class="qfb-a" lang="en">${esc(ans)}</div><div class="qfb-s">${esc(zhQtext(w))}</div>
       ${newFam ? '<span class="qfb-fam">這個字熟悉了</span>' : ''}${demote ? '<div class="qfb-n">退一級，幾題後會再出現</div>' : ''}
       <div class="qfb-acts"><button class="btn big" id="qnext" type="button">繼續</button><button class="qsay" type="button" id="qsay" aria-label="聽發音">${SPK}</button></div></div>`;
     $('#qsay').onclick = ev => speak(w.w, ev.currentTarget);
