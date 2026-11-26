@@ -443,7 +443,7 @@ const quoteToday = () => {
   return d % 2 === 0 ? at(QUOTES, d / 2) : at(BIBLE, (d - 1) / 2);
 };
 const quoteCardHTML = () => { const q = quoteToday(); return `<div class="sec qcard2"><span class="lbl">${BIBLE.includes(q) ? '今日經文' : '今日佳句'}</span><button class="qt" type="button" data-say="${esc(q.q)}" aria-label="聽這句話的發音"><span class="qt-mark" aria-hidden="true">“</span><span class="qt-en" lang="en">${esc(q.q)}</span></button><p class="qt-zh">${esc(q.zh)}</p><div class="qt-by">— ${esc(q.a)}${q.s ? `<span>${esc(q.s)}</span>` : ''}</div></div>`; };
-const BUILD = '6bc7c52a4e';
+const BUILD = '444b09bb9d';
 const UNIT_SIZE = 50, REINSERT = 5, STATE_KEY = 'vocab-state-v1', THEME_KEY = 'vocab-theme', VOICE_KEY = 'vocab-voice';
 const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const $ = s => document.querySelector(s);
@@ -549,7 +549,8 @@ function speak(text, btn){
   btn?.classList.add('playing');
   const word = /^[A-Za-z][A-Za-z'’-]*$/.test(text.trim()) ? text.trim() : null;
   if (!word || lget('vocab-tts-only') === '1') return ttsSpeak(text, btn);
-  // 1) dictionary human recording  2) our own Kokoro recording (audio/<slug>.mp3)  3) phone TTS
+  // 1) our own Kokoro recording (audio/<slug>.mp3, same voice for every word; played inside the tap so iOS allows it)
+  // 2) dictionary human recording  3) phone TTS
   const local = 'audio/' + word.toLowerCase().replace(/[’']s$/, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') + '.mp3';
   const play = (url, next) => {
     if (tok !== speakTok) return;
@@ -558,8 +559,8 @@ function speak(text, btn){
     a.onerror = () => { if (tok === speakTok) next(); };
     a.play().catch(() => { if (tok === speakTok && a.error) next(); });
   };
-  const viaLocal = () => (location.protocol.startsWith('http') && !window.claude?.use) ? play(local, () => ttsSpeak(text, btn)) : ttsSpeak(text, btn);
-  wordAudio(word).then(url => url ? play(url, viaLocal) : viaLocal());
+  const viaDict = () => wordAudio(word).then(url => url ? play(url, () => ttsSpeak(text, btn)) : ttsSpeak(text, btn));
+  if (location.protocol.startsWith('http') && !window.claude?.use) play(local, viaDict); else viaDict();
 }
 
 let toastT;
@@ -811,12 +812,12 @@ function openStats(){
       <div class="tile"><b>${state.unit + 1} / ${state.unitCount}</b><span>單元（目前整理了 ${WORDS.length} 字）</span></div></div>
     <div class="sec"><span class="lbl">最常滑「不熟」的字</span>${worst.length ? worst.map(([i, s]) => li(BY[i].w, BY[i].zh.split(/[；;]/)[0], `不熟 ${s.L} 次 · 熟悉 ${s.R} 次`)).join('') : '<p class="muted">還沒有。左滑過的字會列在這裡。</p>'}</div>
     ${devHTML()}
-    <p class="muted" style="text-align:center">版本 ${BUILD === '6bc7c52a4e' ? 'claude.ai' : BUILD}</p>
+    <p class="muted" style="text-align:center">版本 ${BUILD === '444b09bb9d' ? 'claude.ai' : BUILD}</p>
     <div class="sec"><span class="lbl">設定</span>
       <div class="setting"><span>每日佳句</span><div class="seg" role="group" aria-label="每日佳句內容">${[['all','輪流'],['q','名言'],['b','聖經']].map(([v, n]) => `<button type="button" data-quote-set="${v}" aria-pressed="${quoteMode() === v}">${n}</button>`).join('')}</div></div>
       <div class="setting"><span>外觀</span><div class="seg" role="group" aria-label="外觀">${[['auto','自動'],['light','淺色'],['dark','深色']].map(([v, n]) => `<button type="button" data-theme-set="${v}" aria-pressed="${th === v}">${n}</button>`).join('')}</div></div>
       <div class="setting" style="flex-direction:column;align-items:stretch;gap:8px"><span>發音聲音</span>${vs.length
-        ? `<div class="voice"><label class="sr" for="voiceSel">選擇英文發音聲音</label><select id="voiceSel">${vs.map(v => `<option value="${esc(v.name)}"${voice && v.name === voice.name ? ' selected' : ''}>${esc(v.name)}</option>`).join('')}</select><button class="chip" id="voiceTest" type="button">試聽</button></div><p class="muted">單字會優先播放字典的真人錄音；查不到錄音、或念片語和句子時，才用這裡選的手機語音。已自動排除機器人、怪腔調的聲音。</p>`
+        ? `<div class="voice"><label class="sr" for="voiceSel">選擇英文發音聲音</label><select id="voiceSel">${vs.map(v => `<option value="${esc(v.name)}"${voice && v.name === voice.name ? ' selected' : ''}>${esc(v.name)}</option>`).join('')}</select><button class="chip" id="voiceTest" type="button">試聽</button></div><p class="muted">單字會播放 App 內建的錄音（每個字都是同一個美式男聲）；念片語和句子時，才用這裡選的手機語音。已自動排除機器人、怪腔調的聲音。</p>`
         : '<p class="muted">這台裝置目前沒有英文語音。iPhone 到「設定 › 輔助使用 › 朗讀內容 › 聲音 › 英文」下載一個美國英文聲音後，重新打開這頁。</p>'}</div>
       <div class="setting" style="flex-direction:column;align-items:stretch;gap:8px"><span>備份進度</span>
         <p class="muted" style="margin:0">進度只存在這支手機上。換手機或清除 Safari 資料前，先備份到「檔案」。</p>
